@@ -1,4 +1,5 @@
-import { index, pgEnum, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { index, pgEnum, pgTable, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, softDelete, timestamps } from './_common';
 
 /**
@@ -27,7 +28,13 @@ export const workspaces = pgTable(
     ...timestamps,
     ...softDelete,
   },
-  (t) => [index('workspaces_owner_idx').on(t.ownerId)],
+  (t) => [
+    index('workspaces_owner_idx').on(t.ownerId),
+    // 사용자당 개인 공간은 하나 (동시 첫 로그인에도 중복 생성 방지)
+    uniqueIndex('workspaces_personal_owner_uq')
+      .on(t.ownerId)
+      .where(sql`${t.type} = 'personal'`),
+  ],
 );
 
 /** owner: 초대·자동화·삭제 관리 / editor: 허용 항목 수정 / viewer: 읽기 (기획서 §7) */
