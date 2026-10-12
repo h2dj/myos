@@ -5,11 +5,14 @@ test('인박스 → 할 일 변환 → 완료·삭제·복구 (INBOX-01, TASK-01
   await signUp(page);
 
   // 대시보드 빠른 기록 → 인박스에 즉시 반영
-  await page.getByLabel('빠른 기록').fill('회의 준비\n자료 출력');
+  await page.getByRole('textbox', { name: '빠른 기록' }).fill('회의 준비\n자료 출력');
   await page.getByRole('button', { name: '인박스에 저장' }).click();
   await expect(page.getByText('인박스에 저장했습니다')).toBeVisible();
 
-  await page.getByRole('link', { name: '인박스' }).first().click();
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .getByRole('link', { name: '인박스' })
+    .click();
   await expect(page.getByText('회의 준비')).toBeVisible();
   await page.getByRole('button', { name: '할 일', exact: true }).click();
   await expect(page.getByText('모두 분류했습니다')).toBeVisible();
