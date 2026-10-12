@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+/*
+ * 디자인 토큰 (와이어프레임 기준)
+ * - 중립 배경 + 진한 주 버튼, 파란 포인트
+ * - 카테고리 색: 업무(blue) 건강(green) 개인(amber) 창작(violet)
+ */
+:root {
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f6;
+  --border: #e5e7eb;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --primary: #111827;
+  --primary-foreground: #ffffff;
+  --accent: #3b6cf6;
+  --accent-soft: #e8eefe;
+  --danger: #e5484d;
+  --success: #16a34a;
+
+  --tag-work: #3b6cf6;
+  --tag-health: #16a34a;
+  --tag-personal: #d97706;
+  --tag-creative: #8b5cf6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1115;
+    --surface: #171a21;
+    --surface-muted: #1f232c;
+    --border: #2a2f3a;
+    --foreground: #e5e7eb;
+    --muted: #9ca3af;
+    --primary: #e5e7eb;
+    --primary-foreground: #111827;
+    --accent: #6b8ff8;
+    --accent-soft: #1e2a4a;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-tag-work: var(--tag-work);
+  --color-tag-health: var(--tag-health);
+  --color-tag-personal: var(--tag-personal);
+  --color-tag-creative: var(--tag-creative);
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Noto Sans KR', 'Segoe UI', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
