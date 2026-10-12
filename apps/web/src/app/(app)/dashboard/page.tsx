@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { CheckSquare, Clock, FileText, Wallet } from 'lucide-react';
 import { KpiCard } from '@/components/kpi-card';
+import { QuickCapture } from '@/components/inbox/quick-capture';
 import { PageHeader } from '@/components/page-header';
+import { requireSession } from '@/server/auth/session';
 
 export const metadata: Metadata = { title: '대시보드' };
 
@@ -13,12 +15,16 @@ const KPI_CARDS = [
   { title: '읽고 있는 문서', icon: FileText },
 ];
 
-const WIDGET_SLOTS = ['오늘 할 일', '이번 주 일정', '메모 / 빠른 기록', '최근 활동'];
+const WIDGET_SLOTS = ['오늘 할 일', '이번 주 일정', '최근 활동'];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { user } = await requireSession();
   return (
     <>
-      <PageHeader title="좋은 하루예요 ☀️" description="오늘도 한 걸음, 더 나아가요." />
+      <PageHeader
+        title={`좋은 하루예요, ${user.name}님! ☀️`}
+        description="오늘도 한 걸음, 더 나아가요."
+      />
       <section
         aria-label="핵심 지표"
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
@@ -37,6 +43,10 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm text-muted">2단계에서 위젯으로 구현 예정</p>
           </div>
         ))}
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <h2 className="mb-3 font-semibold">메모 / 빠른 기록</h2>
+          <QuickCapture source="dashboard" />
+        </div>
       </section>
     </>
   );

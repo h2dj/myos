@@ -18,7 +18,7 @@ import { recordAudit } from './audit';
 import type { Actor, Executor } from './context';
 import { NotFoundError } from './errors';
 import { replaceEntityTags, tagNamesSchema, tagsFor, type TagRef } from './tags';
-import { parse } from './validation';
+import { isUuid, parse } from './validation';
 
 const { notes, tags, entityTags } = schema;
 
@@ -101,8 +101,13 @@ export async function restoreNote(db: Executor, actor: Actor, noteId: string) {
   });
 }
 
-export async function getNote(db: Executor, actor: Actor, noteId: string): Promise<NoteWithTags> {
-  const note = await loadNote(db, noteId);
+export async function getNote(
+  db: Executor,
+  actor: Actor,
+  noteId: string,
+  opts: { includeDeleted?: boolean } = {},
+): Promise<NoteWithTags> {
+  const note = await loadNote(db, noteId, opts);
   await requireAccess(db, actor, note.workspaceId, 'read');
   const tagMap = await tagsFor(db, 'note', [note.id]);
   return { ...note, tags: tagMap.get(note.id) ?? [] };
@@ -197,6 +202,7 @@ export async function countNotesByType(db: Executor, actor: Actor, workspaceId: 
 }
 
 async function loadNote(db: Executor, id: string, opts: { includeDeleted?: boolean } = {}) {
+  if (!isUuid(id)) throw new NotFoundError('노트');
   const [n] = await db
     .select()
     .from(notes)

@@ -20,6 +20,7 @@ jobs:
           --health-cmd "pg_isready -U myos" --health-interval 5s --health-retries 10
     env:
       DATABASE_URL: postgres://myos:myos@localhost:5432/myos
+      AUTH_MODE: dev
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,3 +41,12 @@ jobs:
           pnpm db:generate
           test -z "$(git status --porcelain packages/db/migrations)"
       - run: pnpm build
+      - name: Playwright 브라우저 설치
+        run: pnpm --filter @myos/web exec playwright install --with-deps chromium
+      - name: E2E 테스트
+        run: pnpm --filter @myos/web e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: apps/web/test-results

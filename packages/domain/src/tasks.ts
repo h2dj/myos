@@ -19,7 +19,7 @@ import { recordAudit } from './audit';
 import type { Actor, Executor } from './context';
 import { NotFoundError, ValidationError } from './errors';
 import { replaceEntityTags, tagNamesSchema, tagsFor, type TagRef } from './tags';
-import { parse } from './validation';
+import { isUuid, parse } from './validation';
 
 const { tasks, projects } = schema;
 
@@ -229,6 +229,7 @@ async function attachExtras(db: Executor, rows: Task[]): Promise<TaskWithTags[]>
 }
 
 async function loadTask(db: Executor, taskId: string, opts: { includeDeleted?: boolean } = {}) {
+  if (!isUuid(taskId)) throw new NotFoundError('할 일');
   const [task] = await db
     .select()
     .from(tasks)

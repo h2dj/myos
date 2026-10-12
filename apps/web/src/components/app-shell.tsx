@@ -2,12 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
+import { logout } from '@/app/(auth)/actions';
 import { useState } from 'react';
 import { MAIN_NAV, UTILITY_NAV, isActive, type NavItem } from '@/lib/navigation';
 import { Logo } from './logo';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  user,
+  workspaceName,
+  unread,
+}: {
+  children: React.ReactNode;
+  user: { name: string; email: string };
+  workspaceName: string;
+  unread: number;
+}) {
   const pathname = usePathname();
   // 메뉴를 연 경로를 기억해, 다른 경로로 이동하면 모바일 메뉴가 자동으로 닫히게 한다
   const [openedAt, setOpenedAt] = useState<string | null>(null);
@@ -43,7 +54,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav aria-label="주 메뉴" className="flex flex-1 flex-col justify-between gap-6 p-3">
           <NavList items={MAIN_NAV} pathname={pathname} />
-          <NavList items={UTILITY_NAV} pathname={pathname} />
+          <div className="space-y-3">
+            <NavList
+              items={UTILITY_NAV}
+              pathname={pathname}
+              badges={{ '/notifications': unread }}
+            />
+            <div className="flex items-center justify-between gap-2 border-t border-border px-3 pt-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{user.name}</p>
+                <p className="truncate text-xs text-muted">{workspaceName}</p>
+              </div>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  aria-label="로그아웃"
+                  title="로그아웃"
+                  className="rounded-md p-2 text-muted hover:bg-surface-muted hover:text-foreground"
+                >
+                  <LogOut className="size-4" />
+                </button>
+              </form>
+            </div>
+          </div>
         </nav>
       </aside>
 
@@ -52,7 +85,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
+function NavList({
+  items,
+  pathname,
+  badges = {},
+}: {
+  items: NavItem[];
+  pathname: string;
+  badges?: Record<string, number>;
+}) {
   return (
     <ul className="space-y-0.5">
       {items.map(({ href, label, icon: Icon }) => {
@@ -69,7 +110,15 @@ function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
               }`}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
+              <span className="flex-1">{label}</span>
+              {(badges[href] ?? 0) > 0 && (
+                <span
+                  className="rounded-full bg-danger px-1.5 text-xs font-semibold text-white"
+                  aria-label={`읽지 않음 ${badges[href]}개`}
+                >
+                  {badges[href]! > 99 ? '99+' : badges[href]}
+                </span>
+              )}
             </Link>
           </li>
         );

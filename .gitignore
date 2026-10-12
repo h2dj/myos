@@ -10,3 +10,4 @@ next-env.d.ts
 playwright-report/
 test-results/
 .DS_Store
+apps/web/playwright/.cache/

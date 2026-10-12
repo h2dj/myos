@@ -1,6 +1,7 @@
 import { schema } from '@myos/db';
 import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import type { Actor, Executor } from './context';
+import { isUuid } from './validation';
 
 const { notifications } = schema;
 
@@ -51,6 +52,7 @@ export async function unreadNotificationCount(db: Executor, actor: Actor): Promi
 
 /** 본인 알림만 읽음 처리된다 (다른 사용자 알림 id는 무시) */
 export async function markNotificationRead(db: Executor, actor: Actor, id: string) {
+  if (!isUuid(id)) return;
   await db
     .update(notifications)
     .set({ readAt: new Date() })

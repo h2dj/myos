@@ -11,3 +11,10 @@ export function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<
   }
   return result.data;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** URL 등에서 온 id가 UUID 형식이 아니면 DB 오류 대신 NotFound로 처리하기 위한 검사 */
+export function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}

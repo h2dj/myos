@@ -5,7 +5,7 @@ import { requireAccess } from './access';
 import { recordAudit } from './audit';
 import type { Actor, Executor } from './context';
 import { NotFoundError, ValidationError } from './errors';
-import { parse } from './validation';
+import { isUuid, parse } from './validation';
 
 const { projects, tasks } = schema;
 
@@ -174,6 +174,7 @@ async function attachProgress(db: Executor, rows: Project[]): Promise<ProjectWit
 }
 
 async function loadProject(db: Executor, id: string, opts: { includeDeleted?: boolean } = {}) {
+  if (!isUuid(id)) throw new NotFoundError('프로젝트');
   const [p] = await db
     .select()
     .from(projects)

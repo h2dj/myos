@@ -6,7 +6,7 @@ import type { Actor, Executor } from './context';
 import { NotFoundError, ValidationError } from './errors';
 import { createNote } from './notes';
 import { createTask } from './tasks';
-import { parse } from './validation';
+import { isUuid, parse } from './validation';
 
 const { inboxItems, entityLinks } = schema;
 
@@ -103,6 +103,7 @@ export async function archiveInbox(db: Executor, actor: Actor, itemId: string) {
 
 /** 처리 취소(보관 되돌리기). 변환으로 생긴 할 일/노트는 그대로 둔다. */
 export async function reopenInbox(db: Executor, actor: Actor, itemId: string) {
+  if (!isUuid(itemId)) throw new NotFoundError('인박스 항목');
   const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, itemId));
   if (!item) throw new NotFoundError('인박스 항목');
   await requireAccess(db, actor, item.workspaceId, 'write');
@@ -119,6 +120,7 @@ export async function createTaskFromNote(
   noteId: string,
   input: { title: string },
 ) {
+  if (!isUuid(noteId)) throw new NotFoundError('노트');
   return db.transaction(async (tx) => {
     const [note] = await tx
       .select()
@@ -143,6 +145,7 @@ export async function createTaskFromNote(
 }
 
 async function loadPending(db: Executor, actor: Actor, itemId: string) {
+  if (!isUuid(itemId)) throw new NotFoundError('인박스 항목');
   const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, itemId));
   if (!item) throw new NotFoundError('인박스 항목');
   await requireAccess(db, actor, item.workspaceId, 'write');

@@ -1,4 +1,5 @@
 export * from './errors';
+export { isUuid } from './validation';
 export type { Actor, Executor } from './context';
 export * from './access';
 export * from './accounts';
