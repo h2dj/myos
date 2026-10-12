@@ -15,6 +15,13 @@
       "when": 1791786730428,
       "tag": "0001_work_items",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791788120323,
+      "tag": "0002_dashboard",
+      "breakpoints": true
     }
   ]
 }

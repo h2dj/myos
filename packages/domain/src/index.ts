@@ -9,3 +9,5 @@ export * from './projects';
 export * from './notes';
 export * from './inbox';
 export * from './notifications';
+export * from './dashboard';
+export * from './dashboard-data';

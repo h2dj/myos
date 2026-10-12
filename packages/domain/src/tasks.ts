@@ -21,7 +21,7 @@ import { NotFoundError, ValidationError } from './errors';
 import { replaceEntityTags, tagNamesSchema, tagsFor, type TagRef } from './tags';
 import { isUuid, parse } from './validation';
 
-const { tasks, projects } = schema;
+const { tasks, projects, tags: tagTable, entityTags } = schema;
 
 export type Task = typeof tasks.$inferSelect;
 export type TaskStatus = Task['status'];
@@ -157,6 +157,8 @@ export async function getTask(db: Executor, actor: Actor, taskId: string): Promi
 const listInput = z.object({
   workspaceId: z.uuid(),
   projectId: z.uuid().optional(),
+  /** 이 이름의 태그가 붙은 할 일만 */
+  tag: z.string().trim().min(1).optional(),
   status: z.array(z.enum(tasks.status.enumValues)).optional(),
   /** 기준 날짜(예정일 또는 마감일)가 이 범위에 있는 할 일 */
   from: z.coerce.date().optional(),
@@ -180,6 +182,22 @@ export async function listTasks(
     eq(tasks.workspaceId, q.workspaceId),
     q.trash ? isNotNull(tasks.deletedAt) : isNull(tasks.deletedAt),
     q.projectId ? eq(tasks.projectId, q.projectId) : undefined,
+    q.tag
+      ? inArray(
+          tasks.id,
+          db
+            .select({ id: entityTags.entityId })
+            .from(entityTags)
+            .innerJoin(tagTable, eq(tagTable.id, entityTags.tagId))
+            .where(
+              and(
+                eq(entityTags.entityType, 'task'),
+                eq(tagTable.workspaceId, q.workspaceId),
+                eq(tagTable.name, q.tag),
+              ),
+            ),
+        )
+      : undefined,
     q.status ? inArray(tasks.status, q.status) : undefined,
     // 계산식 비교는 drizzle이 Date를 직렬화하지 않으므로 ISO 문자열로 넘긴다
     q.from ? sql`${anchor} >= ${q.from.toISOString()}::timestamptz` : undefined,
