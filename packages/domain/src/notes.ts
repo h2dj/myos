@@ -70,6 +70,12 @@ export async function updateNote(
     if (data.projectId) await assertProjectInWorkspace(tx, data.projectId, current.workspaceId);
     const [note] = await tx.update(notes).set(data).where(eq(notes.id, noteId)).returning();
     if (tagNames) await replaceEntityTags(tx, current.workspaceId, 'note', noteId, tagNames);
+    await recordAudit(tx, actor, {
+      workspaceId: current.workspaceId,
+      action: 'note.update',
+      entityType: 'note',
+      entityId: noteId,
+    });
     return note!;
   });
 }

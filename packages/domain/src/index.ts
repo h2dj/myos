@@ -11,3 +11,8 @@ export * from './inbox';
 export * from './notifications';
 export * from './dashboard';
 export * from './dashboard-data';
+export * from './recurring';
+export * from './mailer';
+export * from './automation-templates';
+export * from './automations';
+export * from './maintenance';

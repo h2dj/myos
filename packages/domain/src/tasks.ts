@@ -105,6 +105,15 @@ export async function updateTask(
       .where(eq(tasks.id, taskId))
       .returning();
     if (tags) await replaceEntityTags(tx, current.workspaceId, 'task', taskId, tags);
+    await recordAudit(tx, actor, {
+      workspaceId: current.workspaceId,
+      action:
+        data.status && data.status !== current.status
+          ? `task.status.${data.status}`
+          : 'task.update',
+      entityType: 'task',
+      entityId: taskId,
+    });
     return task!;
   });
 }

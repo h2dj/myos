@@ -69,6 +69,12 @@ export async function updateProject(
       .set(data)
       .where(eq(projects.id, projectId))
       .returning();
+    await recordAudit(tx, actor, {
+      workspaceId: current.workspaceId,
+      action: 'project.update',
+      entityType: 'project',
+      entityId: projectId,
+    });
     return project!;
   });
 }

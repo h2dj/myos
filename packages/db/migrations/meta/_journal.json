@@ -22,6 +22,13 @@
       "when": 1791788120323,
       "tag": "0002_dashboard",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791892224574,
+      "tag": "0003_automation",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { index, pgEnum, pgTable, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { id, softDelete, timestamps } from './_common';
 
 /**
@@ -11,6 +20,8 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   timezone: text('timezone').notNull().default('Asia/Seoul'),
+  /** 이메일 알림 수신 (확정 사항 #3) */
+  notifyEmail: boolean('notify_email').notNull().default(true),
   ...timestamps,
 });
 
