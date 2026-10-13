@@ -1,0 +1,21 @@
+{
+  "name": "@myos/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@myos/db": "workspace:*",
+    "@myos/domain": "workspace:*",
+    "pg-boss": "^12.37.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

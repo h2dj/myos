@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: myos
+      POSTGRES_PASSWORD: myos
+      POSTGRES_DB: myos
+    ports:
+      - '5432:5432'
+    volumes:
+      - myos-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U myos']
+      interval: 5s
+      retries: 10
+volumes:
+  myos-db:

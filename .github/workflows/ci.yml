@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: myos
+          POSTGRES_PASSWORD: myos
+          POSTGRES_DB: myos
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U myos" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://myos:myos@localhost:5432/myos
+      # AUTH_MODE는 여기서 설정하지 않는다: 운영 빌드는 dev 인증을 거부한다.
+      # E2E는 playwright.config.ts가 테스트 서버에만 AUTH_MODE=dev를 넘긴다.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: 마이그레이션 적용
+        run: pnpm db:migrate
+      - name: 스키마와 마이그레이션 일치 확인
+        run: |
+          pnpm db:check
+          pnpm db:generate
+          test -z "$(git status --porcelain packages/db/migrations)"
+      - run: pnpm build
+      - name: Playwright 브라우저 설치
+        run: pnpm --filter @myos/web exec playwright install --with-deps chromium
+      - name: E2E 테스트
+        run: pnpm --filter @myos/web e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: apps/web/test-results

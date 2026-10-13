@@ -1,0 +1,28 @@
+name: DB 마이그레이션
+
+# main에 마이그레이션이 추가되면 운영 DB에 적용한다. 수동 실행도 가능.
+# 필요한 저장소 Secret: MIGRATION_DATABASE_URL (Supabase 직접 연결 또는 세션 풀러, 포트 5432)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['packages/db/migrations/**']
+
+concurrency: migrate-production
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter "@myos/db..."
+      - name: 마이그레이션 적용
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
