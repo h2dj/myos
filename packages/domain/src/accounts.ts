@@ -1,5 +1,5 @@
 import { schema } from '@myos/db';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Actor, Executor } from './context';
 import { NotFoundError } from './errors';
@@ -23,10 +23,16 @@ export async function ensureUserProfile(
 ): Promise<{ userId: string; personalWorkspaceId: string }> {
   const { id, email, name } = parse(profileInput, input);
 
+  // 대상 없는 DO NOTHING: 동시 첫 로그인에서 id·email 어느 유니크 충돌이든 조용히 넘긴다
+  // (ON CONFLICT (id)만 지정하면 동시에 들어온 두 번째 요청이 email 유니크에서 실패한다)
   await db
     .insert(users)
     .values({ id, email, name: name ?? email.split('@')[0]! })
-    .onConflictDoUpdate({ target: users.id, set: { email } });
+    .onConflictDoNothing();
+  await db
+    .update(users)
+    .set({ email })
+    .where(and(eq(users.id, id), ne(users.email, email)));
 
   await db
     .insert(workspaces)
@@ -59,6 +65,7 @@ export async function getProfile(db: Executor, actor: Actor) {
 const profileUpdate = z.object({
   name: z.string().trim().min(1).max(100),
   timezone: z.string().refine(isValidTimeZone, '알 수 없는 시간대'),
+  notifyEmail: z.boolean().optional(),
 });
 
 export async function updateProfile(

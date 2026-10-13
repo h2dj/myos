@@ -15,6 +15,7 @@ import {
   runDueAutomations,
   runNoteToTask,
   updateAutomation,
+  updateProfile,
   updateTask,
   type EngineDeps,
   type Mailer,
@@ -145,6 +146,17 @@ describe('예약 실행 (AUTO-02)', () => {
     expect(run).toMatchObject({ status: 'succeeded', attempt: 2, error: null });
     expect(sent).toHaveLength(1);
     expect(await listNotifications(db, actor)).toHaveLength(1);
+  });
+
+  it('이메일 수신을 끄면 앱 내 알림만 보낸다', async () => {
+    const { actor, workspaceId } = await newUser();
+    await updateProfile(db, actor, { name: 'x', timezone: 'Asia/Seoul', notifyEmail: false });
+    const a01 = await byTemplate(actor, workspaceId, 'morning_briefing');
+    const { mailer, sent } = fakeMailer();
+    await runAutomationNow(db, actor, a01.id, deps(mailer));
+    expect(sent).toHaveLength(0);
+    const [run] = await listRuns(db, actor, { workspaceId, automationId: a01.id });
+    expect(run!.result).toMatchObject({ notified: true, emailed: false });
   });
 
   it('최대 시도 횟수를 넘기면 멈추고 실패 알림을 남긴다', async () => {

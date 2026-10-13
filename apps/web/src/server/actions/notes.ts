@@ -2,8 +2,8 @@
 
 import {
   createNote,
-  createTaskFromNote,
   deleteNote,
+  runNoteToTask,
   restoreNote,
   updateNote,
   type NoteType,
@@ -54,7 +54,7 @@ export async function restoreNoteAction(noteId: string) {
 
 export async function createTaskFromNoteAction(noteId: string, title: string) {
   return runAction(async ({ actor }) => {
-    const task = await createTaskFromNote(db, actor, noteId, { title });
+    const task = await runNoteToTask(db, actor, noteId, title);
     return { id: task.id };
   }, PATHS);
 }

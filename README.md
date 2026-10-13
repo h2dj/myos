@@ -41,3 +41,9 @@ pnpm build && pnpm --filter @myos/web e2e                       # E2E (dev 인�
 
 스키마를 바꾸면 `pnpm db:generate --name <설명>`으로 마이그레이션을 만들고 함께 커밋합니다.
 CI는 스키마와 마이그레이션이 어긋나면 실패합니다.
+
+## 자동화 워커
+
+- `pnpm dev:worker`(로컬) / 운영은 Fly.io 등 상시 프로세스로 `pnpm --filter @myos/worker start`.
+- 환경 변수: `DATABASE_URL`, `APP_URL`(이메일 링크용), `RESEND_API_KEY`·`EMAIL_FROM`(없으면 이메일 없이 앱 내 알림만).
+- 웹의 "지금 실행"·"재시도"도 같은 환경 변수로 이메일을 보낸다.

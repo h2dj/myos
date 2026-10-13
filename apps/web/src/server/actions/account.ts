@@ -10,6 +10,7 @@ export async function updateProfileAction(form: FormData) {
       await updateProfile(db, actor, {
         name: str(form, 'name') ?? '',
         timezone: str(form, 'timezone') ?? '',
+        notifyEmail: form.get('notifyEmail') === 'on',
       });
     },
     ['/settings', '/dashboard'],

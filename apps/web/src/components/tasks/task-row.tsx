@@ -2,7 +2,7 @@
 
 import { formatLocalDay, taskAnchorDate } from '@myos/core';
 import type { TaskWithTags } from '@myos/domain';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Repeat } from 'lucide-react';
 import { PriorityBadge, TagChip } from '../ui/badges';
 
 export function TaskRow({
@@ -32,6 +32,9 @@ export function TaskRow({
         onClick={() => onOpen(task)}
         className={`min-w-0 flex-1 truncate text-left text-sm ${done ? 'text-muted line-through' : ''} ${task.status === 'cancelled' ? 'text-muted line-through' : ''}`}
       >
+        {task.seriesId && (
+          <Repeat className="mr-1.5 inline size-3.5 text-muted" aria-label="반복" />
+        )}
         {task.title}
       </button>
       <div className="hidden items-center gap-1.5 sm:flex">

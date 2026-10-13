@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { addLocalDays, can, nextRunAfter, utcToLocalDate } from '@myos/core';
+import { addLocalDays, can, describeSchedule, nextRunAfter, utcToLocalDate } from '@myos/core';
 import { schema } from '@myos/db';
 import { and, asc, desc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { requireAccess } from './access';
@@ -90,19 +90,29 @@ export async function listAutomations(
   );
   return rows
     .sort((a, b) => TEMPLATE_ORDER.indexOf(a.template) - TEMPLATE_ORDER.indexOf(b.template))
-    .map((r) => ({
-      ...r,
-      config: resolveConfig(r.template, r.config),
-      definition: describe(r.template),
-      lastRun: lastRuns.get(r.id) ?? null,
-    }));
+    .map((r) => {
+      const config = resolveConfig(r.template, r.config);
+      return {
+        ...r,
+        config,
+        definition: describe(r.template, config),
+        lastRun: lastRuns.get(r.id) ?? null,
+      };
+    });
 }
 
 export type AutomationView = Awaited<ReturnType<typeof listAutomations>>[number];
 
-function describe(template: AutomationTemplate) {
+function describe(template: AutomationTemplate, config: Record<string, unknown>) {
   const d = TEMPLATES[template];
-  return { code: d.code, name: d.name, description: d.description, manualRun: d.manualRun };
+  const schedule = d.schedule(config);
+  return {
+    code: d.code,
+    name: d.name,
+    description: d.description,
+    manualRun: d.manualRun,
+    scheduleText: schedule ? describeSchedule(schedule) : '노트에서 요청할 때',
+  };
 }
 
 async function latestRuns(db: Executor, ids: string[]) {

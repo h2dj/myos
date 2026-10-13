@@ -11,6 +11,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@myos/db": "workspace:*",
+    "@myos/domain": "workspace:*",
     "pg-boss": "^12.37.1"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 import { addLocalDays, getPeriodRange, isKpiMetric, type KpiMetric } from '@myos/core';
 import { utcToLocalDate } from '@myos/core';
 import type { AreaFilter } from '@myos/db/schema';
+import { automationSummary } from './automations';
 import type { Actor, Executor } from './context';
 import type { Dashboard, DashboardWidget } from './dashboard';
 import { listInbox, type InboxItem } from './inbox';
@@ -25,7 +26,16 @@ export type WidgetData =
   | { type: 'schedule'; days: { date: string; items: TaskWithTags[] }[] }
   | { type: 'projects'; items: ProjectWithProgress[] }
   | { type: 'inbox'; pending: number; items: InboxItem[] }
-  | { type: 'automations'; configured: false }
+  | {
+      type: 'automations';
+      items: {
+        id: string;
+        name: string;
+        nextRunAt: Date | null;
+        lastStatus: string | null;
+        lastRunAt: Date | null;
+      }[];
+    }
   | { type: 'kpi'; metric: KpiMetric | null; value: string | null; hint: string | null }
   | { type: 'recent_notes'; items: NoteWithTags[] }
   | { type: 'shortcuts'; links: Shortcut[] };
@@ -148,7 +158,10 @@ export async function loadDashboardData(
             break;
           }
           case 'automations':
-            result[w.id] = { type: 'automations', configured: false };
+            result[w.id] = {
+              type: 'automations',
+              items: await once('automations', () => automationSummary(db, actor, workspaceId)),
+            };
             break;
           case 'recent_notes':
             result[w.id] = { type: 'recent_notes', items: (await notes(area)).slice(0, limit) };

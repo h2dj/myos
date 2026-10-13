@@ -21,11 +21,7 @@ export function WidgetBody({ data, timeZone }: { data: WidgetData; timeZone: str
     case 'inbox':
       return <InboxWidget data={data} />;
     case 'automations':
-      return (
-        <Empty icon={<Zap className="size-5" />}>
-          자동화 규칙이 아직 없습니다. 자동화 센터는 3단계에서 제공됩니다.
-        </Empty>
-      );
+      return <AutomationsWidget data={data} timeZone={timeZone} />;
     case 'kpi':
       return <KpiWidget data={data} />;
     case 'recent_notes':
@@ -223,6 +219,56 @@ function RecentNotesWidget({
               {formatLocalDay(n.updatedAt, timeZone)}
             </span>
           </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const RUN_LABEL: Record<string, string> = {
+  succeeded: '성공',
+  failed: '실패',
+  skipped: '건너뜀',
+  running: '실행 중',
+};
+
+function AutomationsWidget({
+  data,
+  timeZone,
+}: {
+  data: Extract<WidgetData, { type: 'automations' }>;
+  timeZone: string;
+}) {
+  if (data.items.length === 0) {
+    return (
+      <Empty icon={<Zap className="size-5" />}>
+        켜진 자동화가 없습니다.{' '}
+        <Link href="/automations" className="text-accent">
+          자동화 설정
+        </Link>
+      </Empty>
+    );
+  }
+  const fmt = new Intl.DateTimeFormat('ko-KR', {
+    timeZone,
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return (
+    <ul className="space-y-2">
+      {data.items.map((a) => (
+        <li key={a.id} className="flex items-center justify-between gap-2 text-sm">
+          <span className="truncate">{a.name}</span>
+          <span className="shrink-0 text-xs text-muted">
+            {a.lastStatus && (
+              <span className={a.lastStatus === 'failed' ? 'text-danger' : ''}>
+                {RUN_LABEL[a.lastStatus] ?? a.lastStatus}
+              </span>
+            )}
+            {a.nextRunAt && <span className="ml-2">다음 {fmt.format(a.nextRunAt)}</span>}
+          </span>
         </li>
       ))}
     </ul>

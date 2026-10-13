@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { schema } from '@myos/db';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { ensureUserProfile, listWorkspaces, updateProfile } from '../src';
 import { db, newUser } from './helpers';
@@ -16,6 +18,14 @@ describe('계정 / 공간', () => {
     const spaces = await listWorkspaces(db, { userId: id });
     expect(spaces).toHaveLength(1);
     expect(spaces[0]).toMatchObject({ type: 'personal', role: 'owner' });
+  });
+
+  it('인증 쪽 이메일이 바뀌면 프로필 이메일도 바뀐다', async () => {
+    const id = randomUUID();
+    await ensureUserProfile(db, { id, email: `old-${id.slice(0, 8)}@test.local` });
+    await ensureUserProfile(db, { id, email: `new-${id.slice(0, 8)}@test.local` });
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+    expect(user!.email).toBe(`new-${id.slice(0, 8)}@test.local`);
   });
 
   it('프로필 시간대는 유효한 IANA 값만 허용한다', async () => {

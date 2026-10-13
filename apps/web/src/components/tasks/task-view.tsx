@@ -19,7 +19,7 @@ import { FormMessage } from '../ui/form-message';
 import { QuickAddTask } from './quick-add-task';
 import { TaskForm } from './task-form';
 import { TaskRow } from './task-row';
-import { DeleteTaskButton } from './task-actions';
+import { DeleteTaskButton, StopSeriesButton } from './task-actions';
 
 type ProjectOption = Pick<ProjectWithProgress, 'id' | 'name'>;
 
@@ -157,8 +157,11 @@ export function TaskView({
               timeZone={timeZone}
               onDone={() => setEditing(null)}
             />
-            <div className="mt-4 border-t border-border pt-4">
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
               <DeleteTaskButton taskId={editing.id} onDeleted={() => setEditing(null)} />
+              {editing.seriesId && (
+                <StopSeriesButton seriesId={editing.seriesId} onStopped={() => setEditing(null)} />
+              )}
             </div>
           </>
         )}

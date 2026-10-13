@@ -81,6 +81,17 @@ export function TaskForm({
           </Field>
         )}
       </div>
+      {!task && (
+        <Field label="반복">
+          <Select name="repeat" defaultValue="">
+            <option value="">반복 안 함</option>
+            <option value="daily">매일</option>
+            <option value="weekdays">평일마다</option>
+            <option value="weekly">매주 (예정일의 요일)</option>
+            <option value="monthly">매월 (예정일의 날짜)</option>
+          </Select>
+        </Field>
+      )}
       <Field label="태그 (쉼표로 구분)">
         <Input
           name="tags"

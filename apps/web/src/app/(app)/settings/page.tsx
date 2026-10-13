@@ -4,11 +4,11 @@ import { ProfileForm } from '@/components/account/profile-form';
 import { PageHeader } from '@/components/page-header';
 import { buttonClass } from '@/components/ui/button';
 import { requireSession } from '@/server/auth/session';
+import { engineDeps } from '@/server/engine';
 
 export const metadata: Metadata = { title: '설정' };
 
 const LATER = [
-  { title: '알림 설정', note: '이메일 알림 채널 — 3단계(자동화)에서 제공' },
   { title: '연동 서비스', note: 'Notion 가져오기 · Google Calendar — 4단계에서 제공' },
   { title: '데이터 관리', note: '내보내기 · 복원 — 5단계에서 제공' },
 ];
@@ -21,7 +21,13 @@ export default async function SettingsPage() {
       <div className="space-y-6">
         <section className="rounded-xl border border-border bg-surface p-6">
           <h2 className="mb-4 font-semibold">내 계정</h2>
-          <ProfileForm name={user.name} email={user.email} timezone={user.timezone} />
+          <ProfileForm
+            name={user.name}
+            email={user.email}
+            timezone={user.timezone}
+            notifyEmail={user.notifyEmail}
+            mailConfigured={engineDeps().mailer.channel !== 'none'}
+          />
         </section>
         <section className="rounded-xl border border-border bg-surface p-6">
           <h2 className="mb-3 font-semibold">공간</h2>
