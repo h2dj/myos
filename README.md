@@ -33,9 +33,9 @@ pnpm build && pnpm --filter @myos/web e2e                       # E2E (dev 인�
 
 ## 인증
 
-- 운영: Supabase Auth 이메일+비밀번호. `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` 설정.
+- 운영: Supabase Auth 이메일+비밀번호. `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 설정 (legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 동작).
   - 세션 만료(AUTH-01)는 Supabase 대시보드 Authentication → Sessions에서 설정(권장: 비활성 7일, 최대 30일).
-  - 가입 확인 메일 템플릿의 링크는 `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` 형식.
+  - 가입 확인 메일은 기본 템플릿 그대로 쓰면 된다(`/auth/confirm`이 `?code=`·`?token_hash=` 모두 처리). 기본 메일 서버는 조직 멤버 주소로만 발송된다 → `docs/deploy.md` 1-4.
 - 로컬·E2E: `AUTH_MODE=dev`. 서명된 쿠키(12시간)로 로그인되며, 운영 빌드(`NODE_ENV=production`)에서는
   `ALLOW_DEV_AUTH=1`이 함께 없으면 시작을 거부한다. **운영 환경에 두 값을 설정하지 말 것.**
 

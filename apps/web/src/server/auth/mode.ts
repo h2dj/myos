@@ -18,3 +18,14 @@ export function authMode(): AuthMode {
 export const DEV_SESSION_COOKIE = 'myos-dev-session';
 /** 세션 만료 (AUTH-01). Supabase는 대시보드의 세션 설정을 따른다. */
 export const DEV_SESSION_MAX_AGE = 60 * 60 * 12;
+
+/**
+ * Supabase 공개 설정. 새 publishable 키(sb_publishable_…)를 우선 쓰고,
+ * 기존 프로젝트의 legacy anon 키도 받는다 (Supabase는 2026년 말 legacy 키를 폐지 예정).
+ */
+export function supabasePublicConfig(): { url: string; key: string } | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return url && key ? { url, key } : null;
+}

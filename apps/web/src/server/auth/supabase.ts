@@ -1,16 +1,16 @@
 import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { supabasePublicConfig } from './mode';
 
 export function supabaseEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
+  const config = supabasePublicConfig();
+  if (!config) {
     throw new Error(
-      'Supabase 환경 변수(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY)가 없습니다. 로컬 개발은 AUTH_MODE=dev를 사용하세요.',
+      'Supabase 환경 변수(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)가 없습니다. 로컬 개발은 AUTH_MODE=dev를 사용하세요.',
     );
   }
-  return { url, key };
+  return config;
 }
 
 export async function createSupabaseServerClient() {

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifyDevSession } from './server/auth/dev-session';
-import { DEV_SESSION_COOKIE, authMode } from './server/auth/mode';
+import { DEV_SESSION_COOKIE, authMode, supabasePublicConfig } from './server/auth/mode';
 
 const PUBLIC_PATHS = ['/login', '/signup', '/auth/', '/api/health'];
 
@@ -20,10 +20,9 @@ export async function proxy(request: NextRequest) {
     // 서명·만료까지 확인해야 서버의 판단과 어긋나 리다이렉트가 반복되지 않는다
     signedIn = verifyDevSession(request.cookies.get(DEV_SESSION_COOKIE)?.value) !== null;
   } else {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) return response; // 설정 오류는 페이지에서 안내한다
-    const supabase = createServerClient(url, key, {
+    const config = supabasePublicConfig();
+    if (!config) return response; // 설정 오류는 페이지에서 안내한다
+    const supabase = createServerClient(config.url, config.key, {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (toSet) => {
