@@ -1,0 +1,15 @@
+# Fly.io 워커 설정. 저장소 루트에서:
+#   fly launch --no-deploy --copy-config --config apps/worker/fly.toml --dockerfile apps/worker/Dockerfile
+#   fly secrets set DATABASE_URL=... APP_URL=... [RESEND_API_KEY=... EMAIL_FROM=...] --config apps/worker/fly.toml
+#   fly deploy --config apps/worker/fly.toml --dockerfile apps/worker/Dockerfile
+app = "myos-worker"
+primary_region = "nrt" # 도쿄 (Supabase 서울 리전과 가장 가까움)
+
+[build]
+  dockerfile = "Dockerfile"
+
+# HTTP 서비스가 없는 상시 실행 프로세스
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

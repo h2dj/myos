@@ -10,7 +10,7 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "generate": "drizzle-kit generate",
     "check": "drizzle-kit check",
     "migrate": "tsx src/migrate.ts"

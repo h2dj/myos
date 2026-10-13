@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { verifyDevSession } from './server/auth/dev-session';
 import { DEV_SESSION_COOKIE, authMode } from './server/auth/mode';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/auth/'];
+const PUBLIC_PATHS = ['/login', '/signup', '/auth/', '/api/health'];
 
 /**
  * 1차 관문: 세션이 없으면 /login으로 보내고, Supabase 세션 토큰을 갱신한다.

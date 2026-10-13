@@ -73,3 +73,11 @@ export async function purgeExpired(db: Executor, now = new Date()) {
     return purged;
   });
 }
+
+/** 배포 확인용: 적용된 마이그레이션 수 (DB 연결 확인 겸용) */
+export async function appliedMigrationCount(db: Executor): Promise<number> {
+  const rows = await db.execute<{ count: number }>(
+    sql`select count(*)::int as count from drizzle.__drizzle_migrations`,
+  );
+  return rows[0]?.count ?? 0;
+}
