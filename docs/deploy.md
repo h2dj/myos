@@ -8,9 +8,8 @@
 
 ## 0. 배포할 코드
 
-Vercel은 기본적으로 `main` 브랜치를 운영 배포한다. 0~3단계 작업은 `phase-3-automation` 브랜치에 쌓여 있으므로
-`phase-3-automation → main` PR을 만들어 CI 통과를 확인한 뒤 병합한다.
-(병합 없이 보려면 Vercel이 브랜치마다 만드는 Preview 배포를 써도 된다. 이때는 2-3의 Redirect URL에 Preview 주소를 추가한다.)
+`main` 브랜치를 배포한다(0~3단계는 PR #1로 병합 완료). Vercel은 `main`을 운영(Production)으로,
+다른 브랜치를 Preview로 배포한다. Preview 주소로 로그인까지 확인하려면 1-5의 Redirect URLs에 Preview 패턴을 추가한다.
 
 ## 1. Supabase
 
