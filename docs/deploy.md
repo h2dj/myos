@@ -45,6 +45,15 @@
 2. Actions → **DB 마이그레이션** → Run workflow (브랜치: 배포할 브랜치). 이후에는 `main`에 마이그레이션이 추가될 때 자동 실행된다.
    - 로컬에서 하려면: `DATABASE_URL='<Session pooler>' pnpm db:migrate`
 
+**문제 해결: `password authentication failed for user "postgres"` (28P01)**
+
+호스트·사용자 이름은 맞고 전달된 비밀번호만 틀렸다는 뜻이다. 실행 로그 맨 앞의 `[migrate] 연결 대상`·`확인 필요` 줄을 먼저 본다.
+
+- Connect에서 복사한 문자열의 `[YOUR-PASSWORD]`는 **대괄호까지 통째로** 비밀번호로 바꾼다. `[비밀번호]`처럼 대괄호가 남으면 다른 비밀번호로 전달된다.
+- 비밀번호에 `% @ : / ? # [ ]` 같은 문자가 있으면 URL 인코딩이 필요하다. 영문·숫자로만 된 비밀번호로 재설정하는 편이 간단하다.
+- 워크플로는 Environment **`production`**의 Secret을 읽는다. 같은 이름의 Repository secret이 따로 있어도 Environment 쪽이 우선하므로, 고친 값을 Environment 쪽에 저장했는지 확인한다.
+- Supabase에서 비밀번호를 재설정한 직후에는 풀러에 반영되기까지 몇 분 걸릴 수 있다.
+
 ## 3. Vercel (웹)
 
 1. Add New → Project → GitHub `h2dj/myos` 가져오기.

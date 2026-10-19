@@ -192,6 +192,11 @@ describe('예약 실행 (AUTO-02)', () => {
           eq(schema.workspaceMembers.userId, member.actor.userId),
         ),
       );
+    // 다른 테스트가 남긴 실행 대기 자동화가 많아도(한 번에 100개 처리) 이 자동화가 먼저 처리되도록 한다
+    await db
+      .update(schema.automations)
+      .set({ nextRunAt: new Date('2000-01-01T00:00:00Z') })
+      .where(eq(schema.automations.id, a06.id));
     const results = await runDueAutomations(
       db,
       deps(fakeMailer().mailer),
