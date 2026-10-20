@@ -60,7 +60,8 @@ export async function signup(_: AuthFormState, form: FormData): Promise<AuthForm
   }
 
   const supabase = await createSupabaseServerClient();
-  const origin = (await headers()).get('origin') ?? '';
+  // 확인 메일 링크는 배포 주소(APP_URL)를 우선 쓰고, 없을 때만 요청 출처를 쓴다.
+  const origin = (process.env.APP_URL || (await headers()).get('origin') || '').replace(/\/+$/, '');
   const { data, error } = await supabase.auth.signUp({
     ...creds,
     options: { data: { name }, emailRedirectTo: `${origin}/auth/confirm` },
