@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signUp } from './helpers';
+import { signUp, waitForServerAction } from './helpers';
 
 test('인박스 → 할 일 변환 → 완료·삭제·복구 (INBOX-01, TASK-01)', async ({ page }) => {
   await signUp(page);
@@ -29,7 +29,7 @@ test('인박스 → 할 일 변환 → 완료·삭제·복구 (INBOX-01, TASK-01
   await expect(todayRow).toBeVisible();
 
   // 완료 토글 → 새로고침 후에도 유지
-  await todayRow.check();
+  await waitForServerAction(page, () => todayRow.check());
   await expect(page.getByRole('checkbox', { name: '운동 30분 완료 취소' })).toBeChecked();
   await page.reload();
   await expect(page.getByRole('checkbox', { name: '운동 30분 완료 취소' })).toBeChecked();
@@ -57,8 +57,12 @@ test('프로젝트 생성 → 할 일 연결 → 진행률 (PROJ-01)', async ({ 
     await page.getByLabel('새 할 일 제목').fill(title);
     await page.getByLabel('새 할 일 제목').press('Enter');
     await expect(page.getByRole('checkbox', { name: `${title} 완료` })).toBeVisible();
+    // 연속 입력: 추가 후에도 입력창에 포커스가 남는다
+    await expect(page.getByLabel('새 할 일 제목')).toBeFocused();
   }
-  await page.getByRole('checkbox', { name: '디자인 시안 완료' }).check();
+  await waitForServerAction(page, () =>
+    page.getByRole('checkbox', { name: '디자인 시안 완료' }).check(),
+  );
   await page.reload();
   await expect(page.getByText('진행률 50% (1/2)')).toBeVisible();
   await page.goto('/projects');

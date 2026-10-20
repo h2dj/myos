@@ -14,6 +14,7 @@ export function QuickAddTask({
   projectId?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
 
@@ -27,6 +28,8 @@ export function QuickAddTask({
             formRef.current?.reset();
             setError(undefined);
           } else setError(res.error);
+          // 연속 입력: 추가 직후 바로 다음 할 일을 입력할 수 있게 포커스를 되돌린다
+          titleRef.current?.focus();
         })
       }
       className="flex min-w-0 flex-1 items-center gap-2"
@@ -34,6 +37,7 @@ export function QuickAddTask({
       <div className="relative min-w-0 flex-1">
         <Plus className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
         <Input
+          ref={titleRef}
           name="title"
           required
           aria-label="새 할 일 제목"
@@ -41,7 +45,8 @@ export function QuickAddTask({
           className="pl-9"
           aria-invalid={!!error}
           title={error}
-          disabled={pending}
+          // disabled는 포커스를 빼앗으므로 저장 중에는 readOnly로만 막는다
+          readOnly={pending}
         />
       </div>
       <Input
