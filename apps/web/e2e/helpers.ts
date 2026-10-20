@@ -13,3 +13,12 @@ export async function signUp(page: Page, name = '지은', email = uniqueEmail())
   await expect(page).toHaveURL(/\/dashboard/);
   return email;
 }
+
+/** 낙관적 UI는 서버 저장 전에 바로 바뀌므로, 새로고침 전에는 서버 액션 응답까지 기다린다 */
+export async function waitForServerAction(page: Page, act: () => Promise<void>) {
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === 'POST' && !!r.request().headers()['next-action'],
+  );
+  await act();
+  await saved;
+}
