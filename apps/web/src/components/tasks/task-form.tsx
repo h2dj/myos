@@ -2,7 +2,7 @@
 
 import { TASK_STATUS_LABEL } from '@/lib/labels';
 import type { ProjectWithProgress, TaskWithTags } from '@myos/domain';
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { createTaskAction, updateTaskAction } from '@/server/actions/tasks';
 import { Button } from '../ui/button';
 import { Field, Input, Select, Textarea } from '../ui/field';
@@ -22,23 +22,39 @@ export function TaskForm({
   defaults?: { projectId?: string; date?: string };
   onDone: () => void;
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
+  const [added, setAdded] = useState<string>();
   const [pending, startTransition] = useTransition();
   const local = (d: Date | null) => (d ? utcToLocalDate(new Date(d), timeZone) : '');
 
   function submit(form: FormData) {
     startTransition(async () => {
       const res = task ? await updateTaskAction(task.id, form) : await createTaskAction(form);
-      if (res.ok) onDone();
-      else setError(res.error);
+      if (!res.ok) return setError(res.error);
+      if (task || form.get('intent') !== 'continue') return onDone();
+      // 계속 추가: 창을 닫지 않고 비운 뒤 제목에 포커스를 둔다
+      setError(undefined);
+      setAdded(String(form.get('title') ?? ''));
+      formRef.current?.reset();
+      titleRef.current?.focus();
     });
   }
 
   return (
-    <form action={submit} className="space-y-4">
+    <form ref={formRef} action={submit} className="space-y-4">
       <FormMessage error={error} />
       <Field label="제목">
-        <Input name="title" required defaultValue={task?.title} autoFocus maxLength={300} />
+        <Input
+          ref={titleRef}
+          name="title"
+          required
+          defaultValue={task?.title}
+          autoFocus
+          maxLength={300}
+          onChange={() => setAdded(undefined)}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="예정일">
@@ -102,13 +118,31 @@ export function TaskForm({
       <Field label="메모">
         <Textarea name="description" rows={3} defaultValue={task?.description ?? ''} />
       </Field>
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
+        {added && (
+          <span role="status" className="mr-auto text-xs text-success">
+            ‘{added}’ 추가됨
+          </span>
+        )}
         <Button variant="secondary" onClick={onDone}>
-          취소
+          {added ? '닫기' : '취소'}
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className="order-2">
           {pending ? '저장 중…' : '저장'}
         </Button>
+        {/* Enter는 기존처럼 '저장'(첫 제출 버튼)으로 동작하도록 DOM에서는 뒤에 두고 순서만 바꾼다 */}
+        {!task && (
+          <Button
+            type="submit"
+            name="intent"
+            value="continue"
+            variant="secondary"
+            disabled={pending}
+            className="order-1"
+          >
+            추가하고 계속
+          </Button>
+        )}
       </div>
     </form>
   );

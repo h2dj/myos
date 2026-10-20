@@ -24,11 +24,11 @@ export function QuickCapture({
     if (!content.trim()) return;
     startTransition(async () => {
       const res = await captureInboxAction(content, source);
+      ref.current?.focus();
       if (!res.ok) return setError(res.error);
       setError(undefined);
       setSaved(true);
       if (ref.current) ref.current.value = '';
-      ref.current?.focus();
     });
   }
 
