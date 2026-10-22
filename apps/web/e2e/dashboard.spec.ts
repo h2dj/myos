@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { signUp } from './helpers';
+import { signUp, waitForServerAction } from './helpers';
 
 const widget = (page: Page, name: string) => page.getByRole('article', { name, exact: true });
 
@@ -82,8 +82,11 @@ test('할 일 상태를 바꾸면 대시보드 수치가 갱신된다 (인수 �
 
   // 할 일 화면에서 바꿔도 반영
   await page.goto('/tasks');
-  await page.getByRole('checkbox', { name: '기획서 초안 완료' }).check();
+  await waitForServerAction(page, () =>
+    page.getByRole('checkbox', { name: '기획서 초안 완료' }).check(),
+  );
   await expect(page.getByRole('checkbox', { name: '기획서 초안 완료 취소' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: '기획서 초안 완료 취소' })).toBeEnabled();
   await page.goto('/dashboard');
   await expect(widget(page, '오늘 할 일')).toContainText('2 / 2');
 });
