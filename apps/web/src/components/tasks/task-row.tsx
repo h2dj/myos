@@ -24,7 +24,7 @@ export function TaskRow({
 }) {
   const done = task.status === 'done';
   const anchor = taskAnchorDate(task);
-  const canCompleteOnDate =
+  const isOverdue =
     anchor &&
     utcToLocalDate(new Date(anchor), timeZone) < utcToLocalDate(now, timeZone) &&
     !done &&
@@ -63,6 +63,17 @@ export function TaskRow({
       <PriorityBadge priority={task.priority} />
       <div className="flex shrink-0 items-center gap-2">
         <div className="flex shrink-0 items-center gap-1" aria-label={`${task.title} 빠른 작업`}>
+          {isOverdue && (
+            <button
+              type="button"
+              aria-label={`${task.title} 오늘로`}
+              disabled={pending}
+              onClick={() => onQuickAction(task, 'today')}
+              className="min-h-8 rounded px-1.5 text-xs text-muted hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              오늘로
+            </button>
+          )}
           {(
             [
               ['tomorrow', '내일로'],
@@ -77,7 +88,7 @@ export function TaskRow({
               title={
                 action === 'completeOnDate' ? '지난 날짜의 할 일을 그 날 완료한 것으로 처리' : label
               }
-              disabled={pending || (action === 'completeOnDate' && !canCompleteOnDate)}
+              disabled={pending || (action === 'completeOnDate' && !isOverdue)}
               onClick={() => onQuickAction(task, action)}
               className="min-h-8 rounded px-1.5 text-xs text-muted hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
             >

@@ -64,6 +64,26 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: '빠른 작업 완료처리', exact: true }).first(),
     ).toBeDisabled();
 
+    await addPastTask('오늘로 이동');
+    await waitForServerAction(page, () =>
+      page.getByRole('button', { name: '오늘로 이동 오늘로', exact: true }).click(),
+    );
+    await expect(page.getByRole('button', { name: '오늘로 이동 오늘로', exact: true })).toHaveCount(
+      0,
+    );
+    await page.reload();
+    const todaySection = page
+      .locator('section')
+      .filter({ has: page.getByRole('button', { name: /^오늘 / }) });
+    await expect(
+      todaySection.getByRole('button', { name: '오늘로 이동', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: '오늘로 이동 편집', exact: true }).click();
+    await expect(page.getByRole('dialog').getByLabel('예정일')).toHaveValue(
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date()),
+    );
+    await page.getByRole('dialog').getByRole('button', { name: '취소', exact: true }).click();
+
     await addPastTask('과거에 완료');
     await waitForServerAction(page, () =>
       page.getByRole('button', { name: '과거에 완료 완료처리', exact: true }).click(),

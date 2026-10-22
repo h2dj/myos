@@ -1,5 +1,10 @@
 import { schema } from '@myos/db';
-import { taskAnchorDate, taskDatesForTomorrow, utcToLocalDate } from '@myos/core';
+import {
+  taskAnchorDate,
+  taskDatesForToday,
+  taskDatesForTomorrow,
+  utcToLocalDate,
+} from '@myos/core';
 import {
   and,
   asc,
@@ -123,7 +128,7 @@ export function setTaskStatus(db: Executor, actor: Actor, taskId: string, status
   return updateTask(db, actor, taskId, { status });
 }
 
-export type TaskQuickAction = 'tomorrow' | 'copyTomorrow' | 'completeOnDate';
+export type TaskQuickAction = 'today' | 'tomorrow' | 'copyTomorrow' | 'completeOnDate';
 
 export async function runTaskQuickAction(
   db: Executor,
@@ -133,11 +138,11 @@ export async function runTaskQuickAction(
   timeZone: string,
   now = new Date(),
 ) {
-  parse(z.enum(['tomorrow', 'copyTomorrow', 'completeOnDate']), action);
+  parse(z.enum(['today', 'tomorrow', 'copyTomorrow', 'completeOnDate']), action);
   return db.transaction(async (tx) => {
     const current = await loadTask(tx, taskId);
     await requireAccess(tx, actor, current.workspaceId, 'write');
-    if (action === 'completeOnDate') {
+    if (action === 'today' || action === 'completeOnDate') {
       const anchor = taskAnchorDate(current);
       if (
         !anchor ||
@@ -145,7 +150,10 @@ export async function runTaskQuickAction(
         current.status === 'done' ||
         current.status === 'cancelled'
       ) {
-        throw new ValidationError('지난 날짜의 미완료 할 일만 그 날 완료처리할 수 있습니다.');
+        throw new ValidationError('지난 날짜의 미완료 할 일에만 사용할 수 있습니다.');
+      }
+      if (action === 'today') {
+        return updateTask(tx, actor, taskId, taskDatesForToday(current, now, timeZone));
       }
       const [task] = await tx
         .update(tasks)

@@ -47,10 +47,27 @@ export function taskDatesForTomorrow(
   now: Date,
   timeZone: string,
 ) {
-  const tomorrow = startOfDay(addDays(new TZDate(now, timeZone), 1));
+  return taskDatesForDay(task, now, timeZone, 1);
+}
+
+export function taskDatesForToday(
+  task: Pick<BucketableTask, 'scheduledStart' | 'dueAt'> & { scheduledEnd: Date | null },
+  now: Date,
+  timeZone: string,
+) {
+  return taskDatesForDay(task, now, timeZone, 0);
+}
+
+function taskDatesForDay(
+  task: Pick<BucketableTask, 'scheduledStart' | 'dueAt'> & { scheduledEnd: Date | null },
+  now: Date,
+  timeZone: string,
+  offset: number,
+) {
+  const target = startOfDay(addDays(new TZDate(now, timeZone), offset));
   const anchor = taskAnchorDate(task);
-  if (!anchor) return { scheduledStart: new Date(tomorrow), scheduledEnd: null, dueAt: null };
-  const days = differenceInCalendarDays(tomorrow, new TZDate(anchor, timeZone));
+  if (!anchor) return { scheduledStart: new Date(target), scheduledEnd: null, dueAt: null };
+  const days = differenceInCalendarDays(target, new TZDate(anchor, timeZone));
   const shift = (date: Date | null) =>
     date ? new Date(addDays(new TZDate(date, timeZone), days)) : null;
   return {
