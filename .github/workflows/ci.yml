@@ -42,6 +42,15 @@ jobs:
           pnpm db:generate
           test -z "$(git status --porcelain packages/db/migrations)"
       - run: pnpm build
+      - name: 브라우저 의존성 다운로드 설정
+        run: |
+          # Azure 미러가 응답하지 않을 때도 Ubuntu의 서명 검증은 그대로 유지한다.
+          for source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+            if [ -f "$source" ]; then
+              sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' "$source"
+            fi
+          done
+          echo 'Acquire::http::Timeout "30"; Acquire::https::Timeout "30"; Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/99-myos-downloads >/dev/null
       - name: Playwright 브라우저 설치
         run: pnpm --filter @myos/web exec playwright install --with-deps chromium
       - name: E2E 테스트
