@@ -1,4 +1,5 @@
 import { schema } from '@myos/db';
+import { taskAnchorDate, taskDatesForTomorrow, utcToLocalDate } from '@myos/core';
 import {
   and,
   asc,
@@ -120,6 +121,64 @@ export async function updateTask(
 
 export function setTaskStatus(db: Executor, actor: Actor, taskId: string, status: TaskStatus) {
   return updateTask(db, actor, taskId, { status });
+}
+
+export type TaskQuickAction = 'tomorrow' | 'copyTomorrow' | 'completeOnDate';
+
+export async function runTaskQuickAction(
+  db: Executor,
+  actor: Actor,
+  taskId: string,
+  action: TaskQuickAction,
+  timeZone: string,
+  now = new Date(),
+) {
+  parse(z.enum(['tomorrow', 'copyTomorrow', 'completeOnDate']), action);
+  return db.transaction(async (tx) => {
+    const current = await loadTask(tx, taskId);
+    await requireAccess(tx, actor, current.workspaceId, 'write');
+    if (action === 'completeOnDate') {
+      const anchor = taskAnchorDate(current);
+      if (
+        !anchor ||
+        utcToLocalDate(anchor, timeZone) >= utcToLocalDate(now, timeZone) ||
+        current.status === 'done' ||
+        current.status === 'cancelled'
+      ) {
+        throw new ValidationError('지난 날짜의 미완료 할 일만 그 날 완료처리할 수 있습니다.');
+      }
+      const [task] = await tx
+        .update(tasks)
+        .set({ status: 'done', completedAt: anchor })
+        .where(eq(tasks.id, taskId))
+        .returning();
+      await recordAudit(tx, actor, {
+        workspaceId: current.workspaceId,
+        action: 'task.status.done',
+        entityType: 'task',
+        entityId: taskId,
+      });
+      return task!;
+    }
+
+    const dates = taskDatesForTomorrow(current, now, timeZone);
+    if (action === 'tomorrow') return updateTask(tx, actor, taskId, dates);
+
+    const tags = await tagsFor(tx, 'task', [taskId]);
+    // 복사본은 반복 시리즈와 완료 이력을 이어받지 않는 독립적인 미완료 할 일이다.
+    return createTask(tx, actor, {
+      workspaceId: current.workspaceId,
+      title: current.title,
+      description: current.description,
+      priority: current.priority,
+      projectId: current.projectId,
+      assigneeId: current.assigneeId,
+      allDay: current.allDay,
+      status: 'todo',
+      tags: (tags.get(taskId) ?? []).map((tag) => tag.name),
+      ...dates,
+    });
+  });
 }
 
 /** 휴지통으로 이동 (복구 가능) */

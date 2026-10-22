@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { taskBucket } from './task-buckets';
+import { taskBucket, taskDatesForTomorrow } from './task-buckets';
 
 const TZ = 'Asia/Seoul';
 // 2026-04-22(수) 10:00 KST
@@ -36,5 +36,22 @@ describe('taskBucket', () => {
   });
   it('예정일이 없으면 마감일 기준', () => {
     expect(taskBucket(task(null, 'todo', at('2026-04-27T05:00:00Z')), now, TZ)).toBe('nextWeek');
+  });
+});
+
+describe('taskDatesForTomorrow', () => {
+  it('서머타임 경계에서도 다음 현지 날짜와 시각을 유지한다', () => {
+    const result = taskDatesForTomorrow(
+      {
+        scheduledStart: at('2026-03-07T14:00:00Z'), // 뉴욕 09:00
+        scheduledEnd: at('2026-03-07T15:00:00Z'),
+        dueAt: at('2026-03-08T03:00:00Z'),
+      },
+      at('2026-03-07T18:00:00Z'),
+      'America/New_York',
+    );
+    expect(result.scheduledStart).toEqual(at('2026-03-08T13:00:00Z'));
+    expect(result.scheduledEnd).toEqual(at('2026-03-08T14:00:00Z'));
+    expect(result.dueAt).toEqual(at('2026-03-09T02:00:00Z'));
   });
 });

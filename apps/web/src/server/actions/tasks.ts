@@ -9,6 +9,8 @@ import {
   restoreTask,
   setTaskStatus,
   updateTask,
+  runTaskQuickAction,
+  type TaskQuickAction,
   type TaskStatus,
 } from '@myos/domain';
 import { db } from '../db';
@@ -94,6 +96,12 @@ export async function updateTaskAction(taskId: string, form: FormData) {
 export async function setTaskStatusAction(taskId: string, status: TaskStatus) {
   return runAction(async ({ actor }) => {
     await setTaskStatus(db, actor, taskId, status);
+  }, PATHS);
+}
+
+export async function taskQuickAction(taskId: string, action: TaskQuickAction) {
+  return runAction(async ({ actor, user }) => {
+    await runTaskQuickAction(db, actor, taskId, action, user.timezone);
   }, PATHS);
 }
 

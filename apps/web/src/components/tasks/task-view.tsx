@@ -8,10 +8,10 @@ import {
   utcToLocalDate,
   type TaskBucket,
 } from '@myos/core';
-import type { ProjectWithProgress, TaskStatus, TaskWithTags } from '@myos/domain';
+import type { ProjectWithProgress, TaskQuickAction, TaskStatus, TaskWithTags } from '@myos/domain';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useMemo, useOptimistic, useState, useTransition } from 'react';
-import { setTaskStatusAction } from '@/server/actions/tasks';
+import { setTaskStatusAction, taskQuickAction } from '@/server/actions/tasks';
 import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
 import { Select } from '../ui/field';
@@ -44,7 +44,7 @@ export function TaskView({
     (state, { id, status }: { id: string; status: TaskStatus }) =>
       state.map((t) => (t.id === id ? { ...t, status } : t)),
   );
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState<TaskWithTags | null>(null);
   const [creating, setCreating] = useState(false);
@@ -71,6 +71,14 @@ export function TaskView({
   }
   const toggle = (task: TaskWithTags) =>
     changeStatus(task, task.status === 'done' ? 'todo' : 'done');
+
+  function quickAction(task: TaskWithTags, action: TaskQuickAction) {
+    setError(undefined);
+    startTransition(async () => {
+      const res = await taskQuickAction(task.id, action);
+      if (!res.ok) setError(res.error);
+    });
+  }
 
   const today = utcToLocalDate(new Date(now), timeZone);
 
@@ -132,6 +140,8 @@ export function TaskView({
           tasks={filtered}
           timeZone={timeZone}
           now={new Date(now)}
+          onQuickAction={quickAction}
+          pending={pending}
           onToggle={toggle}
           onOpen={setEditing}
         />
@@ -176,10 +186,14 @@ function BucketList({
   now,
   onToggle,
   onOpen,
+  onQuickAction,
+  pending,
 }: {
   tasks: TaskWithTags[];
   timeZone: string;
   now: Date;
+  onQuickAction: (t: TaskWithTags, action: TaskQuickAction) => void;
+  pending: boolean;
   onToggle: (t: TaskWithTags) => void;
   onOpen: (t: TaskWithTags) => void;
 }) {
@@ -228,6 +242,9 @@ function BucketList({
                     key={t.id}
                     task={t}
                     timeZone={timeZone}
+                    now={now}
+                    pending={pending}
+                    onQuickAction={onQuickAction}
                     onToggle={onToggle}
                     onOpen={onOpen}
                   />
