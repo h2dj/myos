@@ -10,6 +10,40 @@ const past = localDateToUtc('2026-04-20', tz);
 const tomorrow = localDateToUtc('2026-04-23', tz);
 
 describe('할 일 빠른 작업', () => {
+  it('오늘로: 예정일 또는 마감일을 오늘로 옮기고 상태와 원본 ID를 유지한다', async () => {
+    const { actor, workspaceId } = await newUser();
+    const today = localDateToUtc('2026-04-22', tz);
+    for (const dates of [{ scheduledStart: past }, { dueAt: past }]) {
+      const task = await createTask(db, actor, {
+        workspaceId,
+        title: '오늘 할 일',
+        status: 'in_progress',
+        ...dates,
+      });
+      const moved = await runTaskQuickAction(db, actor, task.id, 'today', tz, now);
+      expect(moved.id).toBe(task.id);
+      expect(moved.status).toBe('in_progress');
+      expect(moved.completedAt).toBeNull();
+      expect(moved.scheduledStart ?? moved.dueAt).toEqual(today);
+    }
+  });
+
+  it('오늘로는 지난 미완료 항목에만 사용할 수 있다', async () => {
+    const { actor, workspaceId } = await newUser();
+    for (const fields of [
+      {},
+      { scheduledStart: localDateToUtc('2026-04-22', tz) },
+      { scheduledStart: tomorrow },
+      { scheduledStart: past, status: 'done' as const },
+      { scheduledStart: past, status: 'cancelled' as const },
+    ]) {
+      const task = await createTask(db, actor, { workspaceId, title: '이동 불가', ...fields });
+      await expect(runTaskQuickAction(db, actor, task.id, 'today', tz, now)).rejects.toThrow(
+        '지난 날짜',
+      );
+    }
+  });
+
   it('내일로: 날짜와 기간을 옮기고 원본의 내용은 유지한다', async () => {
     const { actor, workspaceId } = await newUser();
     const task = await createTask(db, actor, {
@@ -106,7 +140,12 @@ describe('할 일 빠른 작업', () => {
       title: '비공개',
       scheduledStart: past,
     });
-    for (const action of ['tomorrow', 'copyTomorrow', 'completeOnDate'] as TaskQuickAction[]) {
+    for (const action of [
+      'today',
+      'tomorrow',
+      'copyTomorrow',
+      'completeOnDate',
+    ] as TaskQuickAction[]) {
       await expect(runTaskQuickAction(db, other.actor, task.id, action, tz, now)).rejects.toThrow();
     }
     expect((await getTask(db, owner.actor, task.id)).status).toBe('todo');
