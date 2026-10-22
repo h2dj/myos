@@ -1,5 +1,12 @@
 import { TZDate } from '@date-fns/tz';
-import { addWeeks, endOfDay, endOfWeek, startOfDay } from 'date-fns';
+import {
+  addDays,
+  addWeeks,
+  differenceInCalendarDays,
+  endOfDay,
+  endOfWeek,
+  startOfDay,
+} from 'date-fns';
 
 /** 할 일 화면의 시점 그룹 (와이어프레임 3: 오늘 / 이번 주 / 다음 주 / 언젠가) */
 export const TASK_BUCKETS = [
@@ -32,6 +39,25 @@ export function taskAnchorDate(
   task: Pick<BucketableTask, 'scheduledStart' | 'dueAt'>,
 ): Date | null {
   return task.scheduledStart ?? task.dueAt;
+}
+
+/** 기준일을 내일로 옮기되 현지 시각과 일정·마감 사이의 날짜 간격은 유지한다. */
+export function taskDatesForTomorrow(
+  task: Pick<BucketableTask, 'scheduledStart' | 'dueAt'> & { scheduledEnd: Date | null },
+  now: Date,
+  timeZone: string,
+) {
+  const tomorrow = startOfDay(addDays(new TZDate(now, timeZone), 1));
+  const anchor = taskAnchorDate(task);
+  if (!anchor) return { scheduledStart: new Date(tomorrow), scheduledEnd: null, dueAt: null };
+  const days = differenceInCalendarDays(tomorrow, new TZDate(anchor, timeZone));
+  const shift = (date: Date | null) =>
+    date ? new Date(addDays(new TZDate(date, timeZone), days)) : null;
+  return {
+    scheduledStart: shift(task.scheduledStart),
+    scheduledEnd: shift(task.scheduledEnd),
+    dueAt: shift(task.dueAt),
+  };
 }
 
 export function taskBucket(task: BucketableTask, now: Date, timeZone: string): TaskBucket {

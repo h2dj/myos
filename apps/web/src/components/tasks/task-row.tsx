@@ -1,7 +1,7 @@
 'use client';
 
-import { formatLocalDay, taskAnchorDate } from '@myos/core';
-import type { TaskWithTags } from '@myos/domain';
+import { formatLocalDay, taskAnchorDate, utcToLocalDate } from '@myos/core';
+import type { TaskQuickAction, TaskWithTags } from '@myos/domain';
 import { MoreHorizontal, Repeat } from 'lucide-react';
 import { PriorityBadge, TagChip } from '../ui/badges';
 
@@ -10,27 +10,40 @@ export function TaskRow({
   timeZone,
   onToggle,
   onOpen,
+  now,
+  pending,
+  onQuickAction,
 }: {
   task: TaskWithTags;
   timeZone: string;
+  now: Date;
+  pending: boolean;
+  onQuickAction: (task: TaskWithTags, action: TaskQuickAction) => void;
   onToggle: (task: TaskWithTags) => void;
   onOpen: (task: TaskWithTags) => void;
 }) {
   const done = task.status === 'done';
   const anchor = taskAnchorDate(task);
+  const canCompleteOnDate =
+    anchor &&
+    utcToLocalDate(new Date(anchor), timeZone) < utcToLocalDate(now, timeZone) &&
+    !done &&
+    task.status !== 'cancelled';
   return (
-    <li className="group flex items-center gap-3 border-b border-border px-2 py-2.5 last:border-b-0">
+    <li className="group flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2 py-2.5 last:border-b-0">
       <input
         type="checkbox"
         checked={done}
+        disabled={pending}
         onChange={() => onToggle(task)}
         aria-label={`${task.title} ${done ? '완료 취소' : '완료'}`}
         className="size-4 shrink-0 accent-accent"
       />
       <button
         type="button"
+        disabled={pending}
         onClick={() => onOpen(task)}
-        className={`min-w-0 flex-1 truncate text-left text-sm ${done ? 'text-muted line-through' : ''} ${task.status === 'cancelled' ? 'text-muted line-through' : ''}`}
+        className={`min-w-24 flex-1 truncate text-left text-sm ${done ? 'text-muted line-through' : ''} ${task.status === 'cancelled' ? 'text-muted line-through' : ''}`}
       >
         {task.seriesId && (
           <Repeat className="mr-1.5 inline size-3.5 text-muted" aria-label="반복" />
@@ -48,13 +61,39 @@ export function TaskRow({
         </span>
       )}
       <PriorityBadge priority={task.priority} />
-      {anchor && (
-        <span className="shrink-0 text-xs text-muted">
-          {formatLocalDay(new Date(anchor), timeZone)}
-        </span>
-      )}
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1" aria-label={`${task.title} 빠른 작업`}>
+          {(
+            [
+              ['tomorrow', '내일로'],
+              ['copyTomorrow', '내일도'],
+              ['completeOnDate', '완료처리'],
+            ] as const
+          ).map(([action, label]) => (
+            <button
+              key={action}
+              type="button"
+              aria-label={`${task.title} ${label}`}
+              title={
+                action === 'completeOnDate' ? '지난 날짜의 할 일을 그 날 완료한 것으로 처리' : label
+              }
+              disabled={pending || (action === 'completeOnDate' && !canCompleteOnDate)}
+              onClick={() => onQuickAction(task, action)}
+              className="min-h-8 rounded px-1.5 text-xs text-muted hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {anchor && (
+          <span className="shrink-0 text-xs text-muted">
+            {formatLocalDay(new Date(anchor), timeZone)}
+          </span>
+        )}
+      </div>
       <button
         type="button"
+        disabled={pending}
         onClick={() => onOpen(task)}
         aria-label={`${task.title} 편집`}
         className="rounded p-1 text-muted opacity-60 group-hover:opacity-100 hover:bg-surface-muted"
