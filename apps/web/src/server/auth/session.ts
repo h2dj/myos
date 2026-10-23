@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { db } from '../db';
+import { measure } from '../performance';
 import { devUserId, verifyDevSession } from './dev-session';
 import { DEV_SESSION_COOKIE, authMode } from './mode';
 import { createSupabaseServerClient } from './supabase';
@@ -39,16 +40,16 @@ export const WORKSPACE_COOKIE = 'myos-workspace';
  * 프로필이 아직 없으면(첫 로그인) 개인 공간과 함께 만든다.
  */
 export const requireSession = cache(async () => {
-  const identity = await getIdentity();
+  const identity = await measure('session', 'identity', getIdentity);
   if (!identity) redirect('/login');
 
   const actor: Actor = { userId: identity.id };
-  let workspaces = await listWorkspaces(db, actor);
+  let workspaces = await measure('session', 'workspaces', () => listWorkspaces(db, actor));
   if (workspaces.length === 0) {
     await ensureUserProfile(db, identity);
-    workspaces = await listWorkspaces(db, actor);
+    workspaces = await measure('session', 'workspaces', () => listWorkspaces(db, actor));
   }
-  const user = await getProfile(db, actor);
+  const user = await measure('session', 'profile', () => getProfile(db, actor));
 
   const selected = (await cookies()).get(WORKSPACE_COOKIE)?.value;
   const workspace = workspaces.find((w) => w.id === selected) ?? workspaces[0]!;

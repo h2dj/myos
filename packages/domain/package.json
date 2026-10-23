@@ -9,12 +9,19 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "backup:verify": "tsx tools/backup.ts",
+    "backup:rehearse": "tsx tools/backup.ts --rehearse",
+    "perf:benchmark": "tsx tools/performance.ts --benchmark",
+    "perf:report": "tsx tools/performance.ts"
   },
   "dependencies": {
     "@myos/core": "workspace:*",
     "@myos/db": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
   }
 }

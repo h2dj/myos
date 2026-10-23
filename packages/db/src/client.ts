@@ -1,3 +1,4 @@
+import type { Logger } from 'drizzle-orm/logger';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
@@ -15,14 +16,17 @@ export function usesTransactionPooler(url: string): boolean {
   }
 }
 
-export function createDb(url = process.env.DATABASE_URL, opts: { max?: number } = {}) {
+export function createDb(
+  url = process.env.DATABASE_URL,
+  opts: { max?: number; logger?: Logger } = {},
+) {
   if (!url) throw new Error('DATABASE_URL이 설정되지 않았습니다.');
   const pooled = usesTransactionPooler(url);
   const sql = postgres(url, {
     max: opts.max ?? (pooled ? 5 : 10),
     prepare: !pooled,
   });
-  return { db: drizzle(sql, { schema }), sql };
+  return { db: drizzle(sql, { schema, logger: opts.logger ?? false }), sql };
 }
 
 export type Db = ReturnType<typeof createDb>['db'];

@@ -1,5 +1,6 @@
+import { measure } from '@/server/performance';
 import { getPeriodRange } from '@myos/core';
-import { listProjects, listTasks, listActivities, listActivityPlaces } from '@myos/domain';
+import { listProjectOptions, listTasks, listActivities, listActivityPlaces } from '@myos/domain';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/page-header';
 import { RestoreTaskButton } from '@/components/tasks/task-actions';
@@ -25,14 +26,16 @@ export default async function TasksPage({
   const { start: todayStart } = getPeriodRange('today', now, user.timezone);
 
   const [tasks, projects, activities, activityPlaces] = await Promise.all([
-    listTasks(db, actor, {
-      workspaceId: workspace.id,
-      trash: view === 'trash',
-      // 완료한 일은 오늘 완료분만 보여준다
-      completedSince: view === 'trash' ? undefined : todayStart!,
-      limit: 500,
-    }),
-    listProjects(db, actor, { workspaceId: workspace.id }),
+    measure('tasks.list', 'query', () =>
+      listTasks(db, actor, {
+        workspaceId: workspace.id,
+        trash: view === 'trash',
+        // 완료한 일은 오늘 완료분만 보여준다
+        completedSince: view === 'trash' ? undefined : todayStart!,
+        limit: 500,
+      }),
+    ),
+    measure('projects.options', 'query', () => listProjectOptions(db, actor, workspace.id)),
     listActivities(db, actor, workspace.id),
     listActivityPlaces(db, actor, workspace.id),
   ]);
