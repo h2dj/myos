@@ -106,6 +106,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </ul>
         )}
       </section>
+      <p className="mb-4">
+        <Link href={`/search?project=${id}`} className="text-accent">
+          하위 프로젝트 포함 전체 항목 조회 →
+        </Link>
+      </p>
       <h2 className="mb-3 font-semibold">할 일</h2>
       <TaskView
         tasks={tasks}

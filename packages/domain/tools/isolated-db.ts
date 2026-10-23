@@ -62,7 +62,9 @@ export async function withIsolatedDb<T>(
     let ready = false;
     for (let n = 0; n < 60; n++) {
       try {
-        await docker(['exec', name, 'pg_isready', '-U', 'myos', '-d', database]);
+        // The entrypoint's initialization server accepts Unix sockets before its final restart.
+        // TCP readiness waits for the final server used by postgres.js.
+        await docker(['exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'myos', '-d', database]);
         ready = true;
         break;
       } catch {

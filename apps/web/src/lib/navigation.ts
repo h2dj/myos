@@ -102,7 +102,7 @@ export const UTILITY_NAV: NavItem[] = [
     href: '/search',
     label: '검색',
     icon: Search,
-    description: '할 일·프로젝트·메모를 검색합니다.',
+    description: '할 일·프로젝트·상시 활동·노트를 검색합니다.',
     phase: 4,
   },
   {

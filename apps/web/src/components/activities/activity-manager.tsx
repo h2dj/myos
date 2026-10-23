@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import type { Activity, ActivityPlace } from '@myos/domain';
 import { useState, useTransition } from 'react';
 import {
@@ -57,7 +58,12 @@ export function ActivityManager({
           {activities.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center gap-2 p-3">
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{a.name}</p>
+                <Link
+                  className="font-medium text-accent"
+                  href={`/search?type=task&activity=${a.id}`}
+                >
+                  {a.name}
+                </Link>
                 <p className="text-xs text-muted">
                   {places.find((p) => p.id === a.placeId)?.name ?? '활동처 미지정'}
                 </p>
@@ -104,7 +110,9 @@ export function ActivityManager({
           {places.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-2 p-3">
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{p.name}</p>
+                <Link className="font-medium text-accent" href={`/search?place=${p.id}`}>
+                  {p.name}
+                </Link>
                 {p.description && <p className="text-sm text-muted">{p.description}</p>}
               </div>
               <Button
