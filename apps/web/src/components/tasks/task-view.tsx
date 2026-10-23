@@ -8,7 +8,14 @@ import {
   utcToLocalDate,
   type TaskBucket,
 } from '@myos/core';
-import type { ProjectWithProgress, TaskQuickAction, TaskStatus, TaskWithTags } from '@myos/domain';
+import type {
+  Activity,
+  ActivityPlace,
+  ProjectWithProgress,
+  TaskQuickAction,
+  TaskStatus,
+  TaskWithTags,
+} from '@myos/domain';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useMemo, useOptimistic, useState, useTransition } from 'react';
 import { setTaskStatusAction, taskQuickAction } from '@/server/actions/tasks';
@@ -21,7 +28,7 @@ import { TaskForm } from './task-form';
 import { TaskRow } from './task-row';
 import { DeleteTaskButton, StopSeriesButton } from './task-actions';
 
-type ProjectOption = Pick<ProjectWithProgress, 'id' | 'name'>;
+type ProjectOption = Pick<ProjectWithProgress, 'id' | 'name' | 'parentId'>;
 
 export function TaskView({
   tasks,
@@ -30,9 +37,13 @@ export function TaskView({
   now,
   view,
   fixedProjectId,
+  activities,
+  activityPlaces,
 }: {
   tasks: TaskWithTags[];
   projects: ProjectOption[];
+  activities: Activity[];
+  activityPlaces: ActivityPlace[];
   timeZone: string;
   now: string;
   view: 'list' | 'board';
@@ -141,6 +152,7 @@ export function TaskView({
           now={new Date(now)}
           onQuickAction={quickAction}
           pending={pending}
+          onStatus={changeStatus}
           onToggle={toggle}
           onOpen={setEditing}
         />
@@ -151,6 +163,8 @@ export function TaskView({
       <Dialog open={creating} onClose={() => setCreating(false)} title="할 일 추가">
         <TaskForm
           projects={projects}
+          activities={activities}
+          activityPlaces={activityPlaces}
           timeZone={timeZone}
           defaults={{ projectId: fixedProjectId, date: today }}
           onDone={() => setCreating(false)}
@@ -163,6 +177,8 @@ export function TaskView({
               key={editing.id}
               task={editing}
               projects={projects}
+              activities={activities}
+              activityPlaces={activityPlaces}
               timeZone={timeZone}
               onDone={() => setEditing(null)}
             />
@@ -184,6 +200,7 @@ function BucketList({
   timeZone,
   now,
   onToggle,
+  onStatus,
   onOpen,
   onQuickAction,
   pending,
@@ -193,6 +210,7 @@ function BucketList({
   now: Date;
   onQuickAction: (t: TaskWithTags, action: TaskQuickAction) => void;
   pending: boolean;
+  onStatus: (task: TaskWithTags, status: TaskStatus) => void;
   onToggle: (t: TaskWithTags) => void;
   onOpen: (t: TaskWithTags) => void;
 }) {
@@ -244,6 +262,7 @@ function BucketList({
                     now={now}
                     pending={pending}
                     onQuickAction={onQuickAction}
+                    onStatus={onStatus}
                     onToggle={onToggle}
                     onOpen={onOpen}
                   />

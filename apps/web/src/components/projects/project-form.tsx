@@ -1,7 +1,7 @@
 'use client';
 
 import { PROJECT_STATUS_LABEL } from '@/lib/labels';
-import { utcToLocalDate } from '@myos/core';
+import { projectPath, utcToLocalDate } from '@myos/core';
 import type { Project } from '@myos/domain';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -14,8 +14,10 @@ export function ProjectForm({
   project,
   timeZone,
   onDone,
+  projects = [],
 }: {
   project?: Project;
+  projects?: Pick<Project, 'id' | 'name' | 'parentId'>[];
   timeZone: string;
   onDone: () => void;
 }) {
@@ -46,7 +48,19 @@ export function ProjectForm({
       <Field label="이름">
         <Input name="name" required defaultValue={project?.name} autoFocus maxLength={200} />
       </Field>
-      <div className="grid grid-cols-3 gap-3">
+      <Field label="상위 프로젝트">
+        <Select name="parentId" defaultValue={project?.parentId ?? ''}>
+          <option value="">없음 (최상위)</option>
+          {projects
+            .filter((p) => p.id !== project?.id)
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {projectPath(p, projects)}
+              </option>
+            ))}
+        </Select>
+      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="상태">
           <Select name="status" defaultValue={project?.status ?? 'active'}>
             {Object.entries(PROJECT_STATUS_LABEL).map(([v, l]) => (

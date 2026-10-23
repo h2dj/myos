@@ -1,23 +1,28 @@
 'use client';
 
 import { TASK_STATUS_LABEL } from '@/lib/labels';
-import type { ProjectWithProgress, TaskWithTags } from '@myos/domain';
+import type { Activity, ActivityPlace, ProjectWithProgress, TaskWithTags } from '@myos/domain';
 import { useRef, useState, useTransition } from 'react';
 import { createTaskAction, updateTaskAction } from '@/server/actions/tasks';
+import { createProjectAction } from '@/server/actions/projects';
 import { Button } from '../ui/button';
 import { Field, Input, Select, Textarea } from '../ui/field';
 import { FormMessage } from '../ui/form-message';
-import { utcToLocalDate } from '@myos/core';
+import { projectPath, utcToLocalDate } from '@myos/core';
 
 export function TaskForm({
   task,
   projects,
   timeZone,
+  activities,
+  activityPlaces,
   defaults,
   onDone,
 }: {
   task?: TaskWithTags;
-  projects: Pick<ProjectWithProgress, 'id' | 'name'>[];
+  projects: Pick<ProjectWithProgress, 'id' | 'name' | 'parentId'>[];
+  activities: Activity[];
+  activityPlaces: ActivityPlace[];
   timeZone: string;
   defaults?: { projectId?: string; date?: string };
   onDone: () => void;
@@ -27,6 +32,13 @@ export function TaskForm({
   const [error, setError] = useState<string>();
   const [added, setAdded] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const [projectId, setProjectId] = useState(task?.projectId ?? defaults?.projectId ?? '');
+  const [newProjects, setNewProjects] = useState<typeof projects>([]);
+  const [projectName, setProjectName] = useState('');
+  const [creatingProject, startProjectTransition] = useTransition();
+  const [activityId, setActivityId] = useState(task?.activityId ?? '');
+  const [placeId, setPlaceId] = useState(task?.activityPlaceId ?? '');
+  const projectOptions = [...new Map([...projects, ...newProjects].map((p) => [p.id, p])).values()];
   const local = (d: Date | null) => (d ? utcToLocalDate(new Date(d), timeZone) : '');
 
   function submit(form: FormData) {
@@ -76,11 +88,11 @@ export function TaskForm({
           </Select>
         </Field>
         <Field label="프로젝트">
-          <Select name="projectId" defaultValue={task?.projectId ?? defaults?.projectId ?? ''}>
+          <Select name="projectId" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
             <option value="">없음</option>
-            {projects.map((p) => (
+            {projectOptions.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {projectPath(p, projectOptions)}
               </option>
             ))}
           </Select>
@@ -96,6 +108,72 @@ export function TaskForm({
             </Select>
           </Field>
         )}
+      </div>
+      <details className="rounded-lg border border-border p-3">
+        <summary className="cursor-pointer text-sm">새 프로젝트 만들기</summary>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Input
+            aria-label="새 프로젝트 이름"
+            value={projectName}
+            maxLength={200}
+            onChange={(e) => setProjectName(e.target.value)}
+            className="min-w-0 flex-1"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.preventDefault();
+            }}
+          />
+          <Button
+            variant="secondary"
+            disabled={creatingProject || !projectName.trim()}
+            onClick={() =>
+              startProjectTransition(async () => {
+                setError(undefined);
+                const form = new FormData();
+                form.set('name', projectName);
+                const res = await createProjectAction(form);
+                if (!res.ok) return setError(res.error);
+                setNewProjects((prev) => [...prev, res.data]);
+                setProjectId(res.data.id);
+                setProjectName('');
+              })
+            }
+          >
+            {creatingProject ? '등록 중…' : '프로젝트 등록'}
+          </Button>
+        </div>
+      </details>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="상시 사업·활동">
+          <Select
+            name="activityId"
+            value={activityId}
+            onChange={(e) => {
+              setActivityId(e.target.value);
+              setPlaceId(activities.find((a) => a.id === e.target.value)?.placeId ?? '');
+            }}
+          >
+            <option value="">없음</option>
+            {activities.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="활동처">
+          <Select
+            name="activityPlaceId"
+            value={placeId}
+            onChange={(e) => setPlaceId(e.target.value)}
+          >
+            <option value="">없음</option>
+            {activityPlaces.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
       {!task && (
         <Field label="반복">
@@ -127,7 +205,7 @@ export function TaskForm({
         <Button variant="secondary" onClick={onDone}>
           {added ? '닫기' : '취소'}
         </Button>
-        <Button type="submit" disabled={pending} className="order-2">
+        <Button type="submit" disabled={pending || creatingProject} className="order-2">
           {pending ? '저장 중…' : '저장'}
         </Button>
         {/* Enter는 기존처럼 '저장'(첫 제출 버튼)으로 동작하도록 DOM에서는 뒤에 두고 순서만 바꾼다 */}
@@ -137,7 +215,7 @@ export function TaskForm({
             name="intent"
             value="continue"
             variant="secondary"
-            disabled={pending}
+            disabled={pending || creatingProject}
             className="order-1"
           >
             추가하고 계속

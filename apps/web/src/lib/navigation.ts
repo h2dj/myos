@@ -61,6 +61,13 @@ export const MAIN_NAV: NavItem[] = [
     phase: 1,
   },
   {
+    href: '/activities',
+    label: '사업·활동 / 활동처',
+    icon: FolderKanban,
+    description: '기한 없는 상시 사업·활동과 활동처를 관리합니다.',
+    phase: 1,
+  },
+  {
     href: '/projects',
     label: '프로젝트',
     icon: FolderKanban,

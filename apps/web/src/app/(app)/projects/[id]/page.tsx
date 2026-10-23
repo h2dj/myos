@@ -1,5 +1,13 @@
-import { formatLocalDay, getPeriodRange } from '@myos/core';
-import { NotFoundError, getProject, listNotes, listProjects, listTasks } from '@myos/domain';
+import { formatLocalDay, getPeriodRange, projectPath } from '@myos/core';
+import {
+  NotFoundError,
+  getProject,
+  listNotes,
+  listProjects,
+  listTasks,
+  listActivities,
+  listActivityPlaces,
+} from '@myos/domain';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -15,20 +23,22 @@ export const metadata: Metadata = { title: '프로젝트' };
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { actor, workspace, user } = await requireSession();
+  const { actor, user } = await requireSession();
   const project = await getProject(db, actor, id).catch((e) => {
     if (e instanceof NotFoundError) notFound();
     throw e;
   });
   const now = new Date();
-  const [tasks, notes, projects] = await Promise.all([
+  const [tasks, notes, projects, activities, activityPlaces] = await Promise.all([
     listTasks(db, actor, {
       workspaceId: project.workspaceId,
       projectId: id,
       completedSince: getPeriodRange('week', now, user.timezone).start!,
     }),
     listNotes(db, actor, { workspaceId: project.workspaceId, projectId: id, limit: 20 }),
-    listProjects(db, actor, { workspaceId: workspace.id }),
+    listProjects(db, actor, { workspaceId: project.workspaceId }),
+    listActivities(db, actor, project.workspaceId),
+    listActivityPlaces(db, actor, project.workspaceId),
   ]);
 
   return (
@@ -41,7 +51,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       <PageHeader
         title={project.name}
         description={project.description ?? undefined}
-        actions={<EditProjectButtons project={project} timeZone={user.timezone} />}
+        actions={
+          <EditProjectButtons project={project} projects={projects} timeZone={user.timezone} />
+        }
       />
       <div className="mb-6 grid gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-3">
         <div>
@@ -65,10 +77,41 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {project.parentId && (
+        <p className="mb-4 text-sm">
+          상위 프로젝트:{' '}
+          <Link href={`/projects/${project.parentId}`} className="text-accent">
+            {projectPath(projects.find((p) => p.id === project.parentId) ?? project, projects)}
+          </Link>
+        </p>
+      )}
+      <section className="mb-6" aria-label="하위 프로젝트">
+        <h2 className="mb-2 font-semibold">하위 프로젝트</h2>
+        <p className="mb-2 text-xs text-muted">
+          진행률과 아래 할 일 목록은 이 프로젝트에 직접 연결된 항목 기준입니다.
+        </p>
+        {projects.filter((p) => p.parentId === project.id).length === 0 ? (
+          <p className="text-sm text-muted">하위 프로젝트가 없습니다.</p>
+        ) : (
+          <ul>
+            {projects
+              .filter((p) => p.parentId === project.id)
+              .map((p) => (
+                <li key={p.id}>
+                  <Link className="text-accent" href={`/projects/${p.id}`}>
+                    {p.name}
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        )}
+      </section>
       <h2 className="mb-3 font-semibold">할 일</h2>
       <TaskView
         tasks={tasks}
-        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+        projects={projects}
+        activities={activities}
+        activityPlaces={activityPlaces}
         timeZone={user.timezone}
         now={now.toISOString()}
         view="list"

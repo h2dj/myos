@@ -1,14 +1,17 @@
 'use client';
 
 import { formatLocalDay, taskAnchorDate, utcToLocalDate } from '@myos/core';
-import type { TaskQuickAction, TaskWithTags } from '@myos/domain';
+import type { TaskQuickAction, TaskStatus, TaskWithTags } from '@myos/domain';
 import { MoreHorizontal, Repeat } from 'lucide-react';
+import { TASK_STATUS_LABEL } from '@/lib/labels';
+import { Select } from '../ui/field';
 import { PriorityBadge, TagChip } from '../ui/badges';
 
 export function TaskRow({
   task,
   timeZone,
   onToggle,
+  onStatus,
   onOpen,
   now,
   pending,
@@ -19,6 +22,7 @@ export function TaskRow({
   now: Date;
   pending: boolean;
   onQuickAction: (task: TaskWithTags, action: TaskQuickAction) => void;
+  onStatus: (task: TaskWithTags, status: TaskStatus) => void;
   onToggle: (task: TaskWithTags) => void;
   onOpen: (task: TaskWithTags) => void;
 }) {
@@ -58,6 +62,27 @@ export function TaskRow({
       {task.projectName && (
         <span className="hidden max-w-32 truncate text-xs text-muted md:inline">
           {task.projectName}
+        </span>
+      )}
+      <Select
+        aria-label={`${task.title} 상태`}
+        value={task.status}
+        disabled={pending}
+        onChange={(e) => onStatus(task, e.target.value as TaskStatus)}
+        className="!w-auto !py-1 text-xs"
+      >
+        {Object.entries(TASK_STATUS_LABEL).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </Select>
+      {(task.activityName || task.activityPlaceName) && (
+        <span
+          className="max-w-40 truncate text-xs text-muted"
+          title={[task.activityName, task.activityPlaceName].filter(Boolean).join(' · ')}
+        >
+          {[task.activityName, task.activityPlaceName].filter(Boolean).join(' · ')}
         </span>
       )}
       <PriorityBadge priority={task.priority} />

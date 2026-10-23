@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { id, softDelete, timestamps } from './_common';
 import { users, workspaces } from './identity';
@@ -35,6 +36,9 @@ export const projects = pgTable(
   {
     id: id(),
     workspaceId: workspaceRef(),
+    parentId: uuid('parent_id').references((): AnyPgColumn => projects.id, {
+      onDelete: 'set null',
+    }),
     name: text('name').notNull(),
     description: text('description'),
     status: projectStatus('status').notNull().default('active'),
@@ -44,7 +48,40 @@ export const projects = pgTable(
     ...timestamps,
     ...softDelete,
   },
-  (t) => [index('projects_workspace_idx').on(t.workspaceId, t.status)],
+  (t) => [
+    index('projects_workspace_idx').on(t.workspaceId, t.status),
+    index('projects_parent_idx').on(t.parentId),
+  ],
+);
+
+/** 마감 없이 유지하는 사업·활동의 활동처(단체·회사·장소). */
+export const activityPlaces = pgTable(
+  'activity_places',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    name: text('name').notNull(),
+    description: text('description'),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+    ...softDelete,
+  },
+  (t) => [index('activity_places_workspace_idx').on(t.workspaceId)],
+);
+
+export const activities = pgTable(
+  'activities',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    name: text('name').notNull(),
+    description: text('description'),
+    placeId: uuid('place_id').references(() => activityPlaces.id, { onDelete: 'set null' }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+    ...softDelete,
+  },
+  (t) => [index('activities_workspace_idx').on(t.workspaceId)],
 );
 
 // ── 할 일 ─────────────────────────────────────────────────
@@ -58,6 +95,10 @@ export const tasks = pgTable(
     id: id(),
     workspaceId: workspaceRef(),
     projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
+    activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'set null' }),
+    activityPlaceId: uuid('activity_place_id').references(() => activityPlaces.id, {
+      onDelete: 'set null',
+    }),
     title: text('title').notNull(),
     description: text('description'),
     status: taskStatus('status').notNull().default('todo'),
@@ -81,6 +122,8 @@ export const tasks = pgTable(
   (t) => [
     index('tasks_workspace_status_idx').on(t.workspaceId, t.status),
     index('tasks_project_idx').on(t.projectId),
+    index('tasks_activity_idx').on(t.activityId),
+    index('tasks_activity_place_idx').on(t.activityPlaceId),
     index('tasks_scheduled_idx').on(t.workspaceId, t.scheduledStart),
     uniqueIndex('tasks_series_occurrence_uq')
       .on(t.seriesId, t.occurrenceDate)

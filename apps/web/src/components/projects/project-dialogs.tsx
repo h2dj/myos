@@ -9,7 +9,13 @@ import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
 import { ProjectForm } from './project-form';
 
-export function NewProjectButton({ timeZone }: { timeZone: string }) {
+export function NewProjectButton({
+  timeZone,
+  projects = [],
+}: {
+  timeZone: string;
+  projects?: Project[];
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -17,13 +23,21 @@ export function NewProjectButton({ timeZone }: { timeZone: string }) {
         <Plus className="size-4" /> 프로젝트 추가
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="프로젝트 추가">
-        <ProjectForm timeZone={timeZone} onDone={() => setOpen(false)} />
+        <ProjectForm projects={projects} timeZone={timeZone} onDone={() => setOpen(false)} />
       </Dialog>
     </>
   );
 }
 
-export function EditProjectButtons({ project, timeZone }: { project: Project; timeZone: string }) {
+export function EditProjectButtons({
+  project,
+  timeZone,
+  projects = [],
+}: {
+  project: Project;
+  timeZone: string;
+  projects?: Project[];
+}) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -36,7 +50,12 @@ export function EditProjectButtons({ project, timeZone }: { project: Project; ti
         variant="danger"
         disabled={pending}
         onClick={() => {
-          if (!confirm('프로젝트를 휴지통으로 옮길까요? 소속 할 일은 남아 있습니다.')) return;
+          if (
+            !confirm(
+              '프로젝트를 휴지통으로 옮길까요? 소속 할 일은 남고 하위 프로젝트는 최상위로 이동합니다.',
+            )
+          )
+            return;
           startTransition(async () => {
             const res = await deleteProjectAction(project.id);
             if (res.ok) router.push('/projects');
@@ -46,7 +65,12 @@ export function EditProjectButtons({ project, timeZone }: { project: Project; ti
         <Trash2 className="size-4" /> 삭제
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="프로젝트 편집">
-        <ProjectForm project={project} timeZone={timeZone} onDone={() => setOpen(false)} />
+        <ProjectForm
+          projects={projects}
+          project={project}
+          timeZone={timeZone}
+          onDone={() => setOpen(false)}
+        />
       </Dialog>
     </>
   );

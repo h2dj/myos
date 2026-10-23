@@ -7,7 +7,7 @@ import type { Actor, Executor } from './context';
 import { NotFoundError, ValidationError } from './errors';
 import { isUuid, parse } from './validation';
 
-const { projects, tasks } = schema;
+const { projects, tasks, workspaces } = schema;
 
 export type Project = typeof projects.$inferSelect;
 export type ProjectStatus = Project['status'];
@@ -18,6 +18,7 @@ export type ProjectWithProgress = Project & {
 };
 
 const fields = {
+  parentId: z.uuid().nullable().optional(),
   name: z.string().trim().min(1, '이름을 입력하세요').max(200),
   description: z.string().max(10_000).nullable().optional(),
   status: z.enum(projects.status.enumValues).optional(),
@@ -36,6 +37,8 @@ export async function createProject(
   validateRange(data.startAt, data.dueAt);
   return db.transaction(async (tx) => {
     await requireAccess(tx, actor, workspaceId, 'write');
+    await lockHierarchy(tx, workspaceId);
+    await validateParent(tx, workspaceId, data.parentId);
     const [project] = await tx
       .insert(projects)
       .values({ ...data, workspaceId, createdBy: actor.userId })
@@ -60,6 +63,8 @@ export async function updateProject(
   return db.transaction(async (tx) => {
     const current = await loadProject(tx, projectId);
     await requireAccess(tx, actor, current.workspaceId, 'write');
+    await lockHierarchy(tx, current.workspaceId);
+    await validateParent(tx, current.workspaceId, data.parentId, projectId);
     validateRange(
       data.startAt === undefined ? current.startAt : data.startAt,
       data.dueAt === undefined ? current.dueAt : data.dueAt,
@@ -84,6 +89,8 @@ export async function deleteProject(db: Executor, actor: Actor, projectId: strin
   await db.transaction(async (tx) => {
     const current = await loadProject(tx, projectId);
     await requireAccess(tx, actor, current.workspaceId, 'write');
+    await lockHierarchy(tx, current.workspaceId);
+    await tx.update(projects).set({ parentId: null }).where(eq(projects.parentId, projectId));
     await tx.update(projects).set({ deletedAt: new Date() }).where(eq(projects.id, projectId));
     await recordAudit(tx, actor, {
       workspaceId: current.workspaceId,
@@ -100,7 +107,7 @@ export async function restoreProject(db: Executor, actor: Actor, projectId: stri
     await requireAccess(tx, actor, current.workspaceId, 'write');
     const [project] = await tx
       .update(projects)
-      .set({ deletedAt: null })
+      .set({ deletedAt: null, parentId: null })
       .where(eq(projects.id, projectId))
       .returning();
     return project!;
@@ -191,4 +198,39 @@ async function loadProject(db: Executor, id: string, opts: { includeDeleted?: bo
 
 function validateRange(start: Date | null | undefined, end: Date | null | undefined) {
   if (start && end && end < start) throw new ValidationError('마감일이 시작일보다 빠릅니다.');
+}
+
+// 같은 공간의 구조 변경을 직렬화해 동시 수정으로 생기는 순환도 막는다.
+async function lockHierarchy(db: Executor, workspaceId: string) {
+  await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .for('update');
+}
+
+async function validateParent(
+  db: Executor,
+  workspaceId: string,
+  parentId?: string | null,
+  projectId?: string,
+) {
+  if (!parentId) return;
+  const rows = await db
+    .select({ id: projects.id, parentId: projects.parentId })
+    .from(projects)
+    .where(and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt)));
+  const parents = new Map(rows.map((p) => [p.id, p.parentId]));
+  if (!parents.has(parentId))
+    throw new ValidationError('같은 공간의 프로젝트만 상위 프로젝트로 지정할 수 있습니다.');
+  const visited = new Set<string>(projectId ? [projectId] : []);
+  let id: string | null | undefined = parentId;
+  while (id) {
+    if (visited.has(id))
+      throw new ValidationError(
+        '프로젝트가 자기 자신 또는 하위 프로젝트를 상위로 가질 수 없습니다.',
+      );
+    visited.add(id);
+    id = parents.get(id);
+  }
 }

@@ -12,6 +12,7 @@ function fields(form: FormData, timeZone: string) {
   const due = str(form, 'dueAt');
   return {
     name: str(form, 'name') ?? '',
+    parentId: str(form, 'parentId') ?? null,
     description: str(form, 'description') ?? null,
     status: (str(form, 'status') ?? 'active') as ProjectStatus,
     startAt: start ? localDateToUtc(start, timeZone) : null,
@@ -25,7 +26,7 @@ export async function createProjectAction(form: FormData) {
       workspaceId: workspace.id,
       ...fields(form, user.timezone),
     });
-    return { id: p.id };
+    return { id: p.id, name: p.name, parentId: p.parentId };
   }, PATHS);
 }
 
