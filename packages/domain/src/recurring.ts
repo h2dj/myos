@@ -10,6 +10,7 @@ import { schema } from '@myos/db';
 import { and, eq, isNotNull, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { assertProjectInWorkspace, requireAccess } from './access';
+import { assertActivityInWorkspace, assertActivityPlaceInWorkspace } from './activities';
 import { recordAudit } from './audit';
 import type { Actor, Executor } from './context';
 import { NotFoundError } from './errors';
@@ -38,6 +39,8 @@ const createInput = z.object({
   title: z.string().trim().min(1, '제목을 입력하세요').max(300),
   description: z.string().max(10_000).nullable().optional(),
   projectId: z.uuid().nullable().optional(),
+  activityId: z.uuid().nullable().optional(),
+  activityPlaceId: z.uuid().nullable().optional(),
   priority: z.enum(tasks.priority.enumValues).optional(),
   tags: tagNamesSchema.optional(),
   rule: ruleSchema,
@@ -60,6 +63,9 @@ export async function createRecurringTask(
   const series = await db.transaction(async (tx) => {
     await requireAccess(tx, actor, data.workspaceId, 'write');
     if (data.projectId) await assertProjectInWorkspace(tx, data.projectId, data.workspaceId);
+    if (data.activityId) await assertActivityInWorkspace(tx, data.activityId, data.workspaceId);
+    if (data.activityPlaceId)
+      await assertActivityPlaceInWorkspace(tx, data.activityPlaceId, data.workspaceId);
     const first = occursOn(data.rule, data.startDate)
       ? data.startDate
       : nextOccurrenceAfter(data.rule, data.startDate);
@@ -115,6 +121,8 @@ export async function generateSeriesOccurrences(
         .values({
           workspaceId: s.workspaceId,
           projectId: s.projectId,
+          activityId: s.activityId,
+          activityPlaceId: s.activityPlaceId,
           title: s.title,
           description: s.description,
           priority: s.priority as (typeof tasks.priority.enumValues)[number],

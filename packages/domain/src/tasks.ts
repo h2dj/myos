@@ -21,6 +21,7 @@ import {
 } from 'drizzle-orm';
 import { z } from 'zod';
 import { assertProjectInWorkspace, requireAccess } from './access';
+import { assertActivityInWorkspace, assertActivityPlaceInWorkspace } from './activities';
 import { recordAudit } from './audit';
 import type { Actor, Executor } from './context';
 import { NotFoundError, ValidationError } from './errors';
@@ -31,7 +32,12 @@ const { tasks, projects, tags: tagTable, entityTags } = schema;
 
 export type Task = typeof tasks.$inferSelect;
 export type TaskStatus = Task['status'];
-export type TaskWithTags = Task & { tags: TagRef[]; projectName: string | null };
+export type TaskWithTags = Task & {
+  tags: TagRef[];
+  projectName: string | null;
+  activityName: string | null;
+  activityPlaceName: string | null;
+};
 
 const optionalDate = z.coerce.date().nullable().optional();
 
@@ -41,6 +47,8 @@ const taskFields = {
   status: z.enum(tasks.status.enumValues).optional(),
   priority: z.enum(tasks.priority.enumValues).optional(),
   projectId: z.uuid().nullable().optional(),
+  activityId: z.uuid().nullable().optional(),
+  activityPlaceId: z.uuid().nullable().optional(),
   scheduledStart: optionalDate,
   scheduledEnd: optionalDate,
   allDay: z.boolean().optional(),
@@ -59,6 +67,9 @@ export async function createTask(db: Executor, actor: Actor, input: z.input<type
   return db.transaction(async (tx) => {
     await requireAccess(tx, actor, workspaceId, 'write');
     if (data.projectId) await assertProjectInWorkspace(tx, data.projectId, workspaceId);
+    if (data.activityId) await assertActivityInWorkspace(tx, data.activityId, workspaceId);
+    if (data.activityPlaceId)
+      await assertActivityPlaceInWorkspace(tx, data.activityPlaceId, workspaceId);
 
     const [task] = await tx
       .insert(tasks)
@@ -93,6 +104,9 @@ export async function updateTask(
     const current = await loadTask(tx, taskId);
     await requireAccess(tx, actor, current.workspaceId, 'write');
     if (data.projectId) await assertProjectInWorkspace(tx, data.projectId, current.workspaceId);
+    if (data.activityId) await assertActivityInWorkspace(tx, data.activityId, current.workspaceId);
+    if (data.activityPlaceId)
+      await assertActivityPlaceInWorkspace(tx, data.activityPlaceId, current.workspaceId);
     validateRange(
       data.scheduledStart === undefined ? current.scheduledStart : data.scheduledStart,
       data.scheduledEnd === undefined ? current.scheduledEnd : data.scheduledEnd,
@@ -180,6 +194,8 @@ export async function runTaskQuickAction(
       description: current.description,
       priority: current.priority,
       projectId: current.projectId,
+      activityId: current.activityId,
+      activityPlaceId: current.activityPlaceId,
       assigneeId: current.assigneeId,
       allDay: current.allDay,
       status: 'todo',
@@ -315,9 +331,38 @@ async function attachExtras(db: Executor, rows: Task[]): Promise<TaskWithTags[]>
       .where(inArray(projects.id, projectIds));
     for (const p of ps) names.set(p.id, p.name);
   }
+  const activityIds = [...new Set(rows.flatMap((r) => (r.activityId ? [r.activityId] : [])))];
+  const placeIds = [
+    ...new Set(rows.flatMap((r) => (r.activityPlaceId ? [r.activityPlaceId] : []))),
+  ];
+  const [activityRows, placeRows] = await Promise.all([
+    activityIds.length
+      ? db
+          .select({ id: schema.activities.id, name: schema.activities.name })
+          .from(schema.activities)
+          .where(
+            and(inArray(schema.activities.id, activityIds), isNull(schema.activities.deletedAt)),
+          )
+      : [],
+    placeIds.length
+      ? db
+          .select({ id: schema.activityPlaces.id, name: schema.activityPlaces.name })
+          .from(schema.activityPlaces)
+          .where(
+            and(
+              inArray(schema.activityPlaces.id, placeIds),
+              isNull(schema.activityPlaces.deletedAt),
+            ),
+          )
+      : [],
+  ]);
+  const activityNames = new Map(activityRows.map((r) => [r.id, r.name]));
+  const placeNames = new Map(placeRows.map((r) => [r.id, r.name]));
   return rows.map((r) => ({
     ...r,
     tags: tagMap.get(r.id) ?? [],
+    activityName: r.activityId ? (activityNames.get(r.activityId) ?? null) : null,
+    activityPlaceName: r.activityPlaceId ? (placeNames.get(r.activityPlaceId) ?? null) : null,
     projectName: r.projectId ? (names.get(r.projectId) ?? null) : null,
   }));
 }

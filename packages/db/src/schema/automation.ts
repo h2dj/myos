@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { id, timestamps } from './_common';
 import { users, workspaces } from './identity';
-import { projects } from './work';
+import { activities, activityPlaces, projects } from './work';
 
 /** 자동화 템플릿 A01~A06 (기획서 §3) */
 export const automationTemplate = pgEnum('automation_template', [
@@ -112,6 +112,10 @@ export const taskSeries = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: 'cascade' }),
     projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
+    activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'set null' }),
+    activityPlaceId: uuid('activity_place_id').references(() => activityPlaces.id, {
+      onDelete: 'set null',
+    }),
     title: text('title').notNull(),
     description: text('description'),
     priority: text('priority').notNull().default('none'),

@@ -36,6 +36,13 @@
       "when": 1791893666285,
       "tag": "0004_enable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792736563011,
+      "tag": "0005_project_hierarchy_activities",
+      "breakpoints": true
     }
   ]
 }

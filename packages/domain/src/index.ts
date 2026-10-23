@@ -16,3 +16,5 @@ export * from './mailer';
 export * from './automation-templates';
 export * from './automations';
 export * from './maintenance';
+
+export * from './activities';

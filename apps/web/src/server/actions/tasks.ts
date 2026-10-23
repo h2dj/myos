@@ -28,6 +28,8 @@ function taskFields(form: FormData, timeZone: string) {
     description: str(form, 'description') ?? null,
     priority: (str(form, 'priority') ?? 'none') as Priority,
     projectId: str(form, 'projectId') ?? null,
+    activityId: str(form, 'activityId') ?? null,
+    activityPlaceId: str(form, 'activityPlaceId') ?? null,
     scheduledStart: date ? localDateToUtc(date, timeZone) : null,
     // 마감은 그 날 끝(다음 날 00:00 직전)으로 저장
     dueAt: due ? new Date(localDateToUtc(due, timeZone).getTime() + 86_400_000 - 1) : null,
@@ -67,6 +69,8 @@ export async function createTaskAction(form: FormData) {
           title: fields.title,
           description: fields.description,
           projectId: fields.projectId,
+          activityId: fields.activityId,
+          activityPlaceId: fields.activityPlaceId,
           priority: fields.priority,
           tags: fields.tags,
           rule,

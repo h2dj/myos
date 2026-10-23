@@ -5,3 +5,4 @@ export * from './local-date';
 export * from './widgets';
 export * from './schedule';
 export * from './recurrence';
+export * from './project-hierarchy';

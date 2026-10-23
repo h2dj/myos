@@ -1,5 +1,5 @@
 import { getPeriodRange } from '@myos/core';
-import { listProjects, listTasks } from '@myos/domain';
+import { listProjects, listTasks, listActivities, listActivityPlaces } from '@myos/domain';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/page-header';
 import { RestoreTaskButton } from '@/components/tasks/task-actions';
@@ -24,7 +24,7 @@ export default async function TasksPage({
   const now = new Date();
   const { start: todayStart } = getPeriodRange('today', now, user.timezone);
 
-  const [tasks, projects] = await Promise.all([
+  const [tasks, projects, activities, activityPlaces] = await Promise.all([
     listTasks(db, actor, {
       workspaceId: workspace.id,
       trash: view === 'trash',
@@ -33,6 +33,8 @@ export default async function TasksPage({
       limit: 500,
     }),
     listProjects(db, actor, { workspaceId: workspace.id }),
+    listActivities(db, actor, workspace.id),
+    listActivityPlaces(db, actor, workspace.id),
   ]);
 
   return (
@@ -63,7 +65,9 @@ export default async function TasksPage({
       ) : (
         <TaskView
           tasks={tasks}
-          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          projects={projects}
+          activities={activities}
+          activityPlaces={activityPlaces}
           timeZone={user.timezone}
           now={now.toISOString()}
           view={view}
