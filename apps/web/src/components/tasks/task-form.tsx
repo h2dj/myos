@@ -18,6 +18,7 @@ export function TaskForm({
   activityPlaces,
   defaults,
   onDone,
+  onCancel,
 }: {
   task?: TaskWithTags;
   projects: Pick<ProjectWithProgress, 'id' | 'name' | 'parentId'>[];
@@ -26,6 +27,7 @@ export function TaskForm({
   timeZone: string;
   defaults?: { projectId?: string; date?: string };
   onDone: () => void;
+  onCancel?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -202,7 +204,7 @@ export function TaskForm({
             ‘{added}’ 추가됨
           </span>
         )}
-        <Button variant="secondary" onClick={onDone}>
+        <Button variant="secondary" onClick={onCancel ?? onDone}>
           {added ? '닫기' : '취소'}
         </Button>
         <Button type="submit" disabled={pending || creatingProject} className="order-2">

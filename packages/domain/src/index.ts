@@ -21,3 +21,5 @@ export * from './activities';
 export * from './backup/format';
 export * from './backup/export';
 export * from './backup/restore';
+
+export * from './search';
