@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { logout } from '@/app/(auth)/actions';
 import { ProfileForm } from '@/components/account/profile-form';
 import { PageHeader } from '@/components/page-header';
@@ -8,9 +9,7 @@ import { engineDeps } from '@/server/engine';
 
 export const metadata: Metadata = { title: '설정' };
 
-const LATER = [
-  { title: '연동 서비스', note: 'Notion 가져오기 · Google Calendar — 4단계에서 제공' },
-];
+const LATER = [{ title: '연동 서비스', note: 'Google Calendar — 후속 단계에서 제공' }];
 
 export default async function SettingsPage() {
   const { user, workspace, workspaces } = await requireSession();
@@ -45,7 +44,7 @@ export default async function SettingsPage() {
           <h2 className="mb-3 font-semibold">데이터 관리</h2>
           <p className="mb-3 text-sm text-muted">
             현재 공간의 프로젝트·할 일·노트·인박스·활동·활동처·반복 설정·태그와 연결을 JSON 파일로
-            내보냅니다. 휴지통 항목도 포함됩니다.
+            내보냅니다. 휴지통 항목과 Notion 가져오기 이력·원본도 포함됩니다.
           </p>
           <p className="mb-3 text-sm text-muted">
             이 파일은 업무 데이터 사본입니다. 로그인 계정·공유 멤버·개인 대시보드·알림·자동화 실행
@@ -58,6 +57,11 @@ export default async function SettingsPage() {
           ) : (
             <p className="text-sm text-muted">공간 소유자만 내보낼 수 있습니다.</p>
           )}
+          <div className="mt-4">
+            <Link href="/settings/notion" className={buttonClass('secondary')}>
+              Notion 파일 가져오기
+            </Link>
+          </div>
           <p className="mt-3 text-xs text-muted">
             복원은 개발 도구의 별도 임시 DB에서 검증합니다. 현재 공간에 덮어쓰는 기능은 제공하지
             않습니다.

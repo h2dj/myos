@@ -16,7 +16,7 @@ export async function exportWorkspaceBackup(db: Db, actor: Actor, workspaceId: s
         .from(schema.workspaces)
         .where(eq(schema.workspaces.id, workspaceId));
       const limit = MAX_BACKUP_ROWS + 1;
-      const [places, activities, projects, series, tasks, notes, inbox, tags, links] =
+      const [places, activities, projects, series, tasks, notes, inbox, tags, links, externalRefs] =
         await Promise.all([
           tx
             .select()
@@ -63,6 +63,11 @@ export async function exportWorkspaceBackup(db: Db, actor: Actor, workspaceId: s
             .from(schema.entityLinks)
             .where(eq(schema.entityLinks.workspaceId, workspaceId))
             .limit(limit),
+          tx
+            .select()
+            .from(schema.externalRefs)
+            .where(eq(schema.externalRefs.workspaceId, workspaceId))
+            .limit(limit),
         ]);
       const entityTags = tags.length
         ? await tx
@@ -84,10 +89,11 @@ export async function exportWorkspaceBackup(db: Db, actor: Actor, workspaceId: s
         JSON.parse(
           JSON.stringify({
             format: 'myos-workspace',
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
             workspace,
             tables: {
+              externalRefs,
               places,
               activities,
               projects,

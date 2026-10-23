@@ -89,7 +89,7 @@ try {
       if (after.maxStatements >= before.minStatements) throw new Error('집계 쿼리 감소 검증 실패');
       return {
         environment: 'ephemeral-local-postgres16',
-        workload: { projects: 103, seededTasks: 2005, warmup: 5, samples: 30 },
+        workload: { projects: 103, seededTasks: 2006, warmup: 5, samples: 30 },
         before,
         after,
         list,

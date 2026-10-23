@@ -43,6 +43,13 @@
       "when": 1792736563011,
       "tag": "0005_project_hierarchy_activities",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792750967291,
+      "tag": "0006_tiresome_champions",
+      "breakpoints": true
     }
   ]
 }

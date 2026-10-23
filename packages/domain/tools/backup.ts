@@ -5,6 +5,9 @@ import {
   parseWorkspaceBackup,
   MAX_BACKUP_BYTES,
   ValidationError,
+  previewNotionImport,
+  importNotionSample,
+  mappingSchema,
 } from '../src';
 import { withIsolatedDb } from './isolated-db';
 import { seedRehearsal } from './fixture';
@@ -19,6 +22,23 @@ try {
       const text = JSON.stringify(await exportWorkspaceBackup(source.db, actor, workspaceId));
       return withIsolatedDb(async (target) => {
         const result = await restoreBackupForVerification(target.db, text);
+        const backup = parseWorkspaceBackup(text);
+        const ref = backup.tables.externalRefs?.[0];
+        if (!ref) throw new Error('가져오기 이력 검증 데이터 누락');
+        const { timeZone, ...mapping } = ref.mapping;
+        if (typeof timeZone !== 'string') throw new Error('가져오기 시간대 누락');
+        const request = {
+          text: JSON.stringify([ref.raw]),
+          format: 'json' as const,
+          mapping: mappingSchema.parse(mapping),
+        };
+        const preview = await previewNotionImport(target.db, actor, workspaceId, request, timeZone);
+        const retry = await importNotionSample(target.db, actor, workspaceId, request, timeZone, {
+          digest: preview.digest,
+          selected: [0],
+        });
+        if (retry.created !== 0 || retry.skipped !== 1)
+          throw new Error('복원 후 중복 방지 검증 실패');
         let overwriteRejected = false;
         try {
           await restoreBackupForVerification(target.db, text);
@@ -29,6 +49,7 @@ try {
         return {
           ...result,
           overwriteRejected,
+          importDuplicateRejected: true,
           source: 'synthetic-fixture',
           target: 'ephemeral-local-postgres16',
         };

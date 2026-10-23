@@ -26,6 +26,24 @@ const rule = z.discriminatedUnion('freq', [
 ]);
 const tablesSchema = z
   .object({
+    externalRefs: z
+      .array(
+        z
+          .object({
+            ...base,
+            provider: z.literal('notion'),
+            externalId: z.string().regex(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/),
+            entityType: z.enum(['task', 'project', 'activity', 'place']),
+            entityId: uuid,
+            sourceUpdatedAt: nullableDate,
+            sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+            raw: z.record(z.string(), z.unknown()),
+            mapping: z.record(z.string(), z.unknown()),
+            importedAt: date,
+          })
+          .strict(),
+      )
+      .optional(),
     places: z.array(z.object({ ...work, name, description: z.string().nullable() }).strict()),
     activities: z.array(
       z.object({ ...work, name, description: z.string().nullable(), placeId: nullableId }).strict(),
@@ -152,7 +170,7 @@ const tablesSchema = z
 const payloadSchema = z
   .object({
     format: z.literal('myos-workspace'),
-    version: z.literal(1),
+    version: z.union([z.literal(1), z.literal(2)]),
     exportedAt: date,
     workspace: z
       .object({
@@ -171,6 +189,7 @@ export type BackupPayload = z.infer<typeof payloadSchema>;
 export type BackupTables = BackupPayload['tables'];
 export type WorkspaceBackup = BackupPayload & { sha256: string };
 export const BACKUP_TABLES = [
+  'externalRefs',
   'places',
   'activities',
   'projects',
@@ -200,9 +219,9 @@ export function backupTableSummary(tables: BackupTables) {
     BACKUP_TABLES.map((key) => [
       key,
       {
-        count: tables[key].length,
+        count: (tables[key] ?? []).length,
         sha256: hash(
-          [...tables[key]].sort((a, b) =>
+          [...(tables[key] ?? [])].sort((a, b) =>
             canonical(a) < canonical(b) ? -1 : canonical(a) > canonical(b) ? 1 : 0,
           ),
         ),
@@ -213,11 +232,22 @@ export function backupTableSummary(tables: BackupTables) {
 
 function validateRelations(backup: BackupPayload) {
   const { tables: t, workspace } = backup;
+  if (
+    (backup.version === 1 && t.externalRefs !== undefined) ||
+    (backup.version === 2 && t.externalRefs === undefined)
+  )
+    throw new ValidationError('백업 버전과 가져오기 이력 형식이 일치하지 않습니다.');
+  const sources = new Set<string>();
+  for (const ref of t.externalRefs ?? []) {
+    const key = `${ref.provider}:${ref.externalId}`;
+    if (sources.has(key)) throw new ValidationError('가져오기 원본 ID가 중복되어 있습니다.');
+    sources.add(key);
+  }
   let total = 0;
   for (const key of BACKUP_TABLES) {
-    total += t[key].length;
+    total += (t[key] ?? []).length;
     const seen = new Set<string>();
-    for (const row of t[key]) {
+    for (const row of t[key] ?? []) {
       if ('workspaceId' in row && row.workspaceId !== workspace.id)
         throw new ValidationError('다른 공간의 데이터가 포함되어 있습니다.');
       const id = 'id' in row ? row.id : `${row.tagId}:${row.entityType}:${row.entityId}`;

@@ -1,0 +1,45 @@
+export type NotionKind = 'task' | 'project' | 'activity' | 'place';
+export const NOTION_FIELDS = {
+  sourceId: 'Notion 페이지 ID / URL',
+  title: '제목 / 이름',
+  description: '메모 / 설명',
+  status: '할 일 상태',
+  completed: '완료 체크',
+  completedAt: '완료일',
+  scheduledStart: '예정 시작일',
+  scheduledEnd: '예정 종료일',
+  dueAt: '마감일',
+  priority: '우선순위',
+  tags: '태그',
+  parent: '상위 프로젝트 원본 ID',
+  project: '프로젝트 원본 ID',
+  activity: '상시 활동 원본 ID',
+  place: '활동처 원본 ID',
+  createdAt: '원본 생성 일시',
+  sourceUpdatedAt: '원본 수정 일시',
+} as const;
+export type NotionField = keyof typeof NOTION_FIELDS;
+const fieldsByKind = {
+  task: [
+    'sourceId',
+    'title',
+    'description',
+    'status',
+    'completed',
+    'completedAt',
+    'scheduledStart',
+    'scheduledEnd',
+    'dueAt',
+    'priority',
+    'tags',
+    'project',
+    'activity',
+    'place',
+    'createdAt',
+    'sourceUpdatedAt',
+  ],
+  project: ['sourceId', 'title', 'description', 'parent', 'createdAt', 'sourceUpdatedAt'],
+  activity: ['sourceId', 'title', 'description', 'place', 'createdAt', 'sourceUpdatedAt'],
+  place: ['sourceId', 'title', 'description', 'createdAt', 'sourceUpdatedAt'],
+} as const;
+export const notionFieldsFor = (kind: NotionKind): readonly NotionField[] => fieldsByKind[kind];

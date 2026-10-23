@@ -54,7 +54,7 @@ export async function restoreBackupForVerification(db: Db, text: string) {
       userId: backup.workspace.ownerId,
       role: 'owner',
     });
-    // 버전 1의 고정 테이블만 허용한다. 파일에서 SQL/테이블 이름/접속 주소를 받지 않는다.
+    // 버전별 고정 테이블만 허용한다. 파일에서 SQL/테이블 이름/접속 주소를 받지 않는다.
     await batch(t.places, (rows) =>
       tx
         .insert(schema.activityPlaces)
@@ -113,6 +113,11 @@ export async function restoreBackupForVerification(db: Db, text: string) {
       tx
         .insert(schema.entityTags)
         .values(rows.map((row) => revive(row) as typeof schema.entityTags.$inferInsert)),
+    );
+    await batch(t.externalRefs ?? [], (rows) =>
+      tx
+        .insert(schema.externalRefs)
+        .values(rows.map((row) => revive(row) as typeof schema.externalRefs.$inferInsert)),
     );
     await batch(t.links, (rows) =>
       tx
