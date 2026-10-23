@@ -84,12 +84,11 @@ export function TaskView({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <QuickAddTask defaultDate={today} projectId={fixedProjectId} />
+      <QuickAddTask defaultDate={today} projectId={fixedProjectId}>
         <Button onClick={() => setCreating(true)} variant="secondary">
           <Plus className="size-4" /> 자세히 추가
         </Button>
-      </div>
+      </QuickAddTask>
 
       <div className="flex flex-wrap gap-2" aria-label="필터">
         {!fixedProjectId && (

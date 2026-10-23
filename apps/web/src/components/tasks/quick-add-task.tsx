@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, type ReactNode } from 'react';
 import { createTaskAction } from '@/server/actions/tasks';
 import { Input } from '../ui/field';
 
@@ -9,9 +9,11 @@ import { Input } from '../ui/field';
 export function QuickAddTask({
   defaultDate,
   projectId,
+  children,
 }: {
   defaultDate: string;
   projectId?: string;
+  children?: ReactNode;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -32,9 +34,9 @@ export function QuickAddTask({
           titleRef.current?.focus();
         })
       }
-      className="flex min-w-0 flex-1 items-center gap-2"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex"
     >
-      <div className="relative min-w-0 flex-1">
+      <div className="relative col-span-2 min-w-0 sm:flex-1">
         <Plus className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
         <Input
           ref={titleRef}
@@ -42,7 +44,7 @@ export function QuickAddTask({
           required
           aria-label="새 할 일 제목"
           placeholder="할 일을 입력하고 Enter"
-          className="pl-9"
+          className="pl-9 !text-base sm:!text-sm"
           aria-invalid={!!error}
           title={error}
           // disabled는 포커스를 빼앗으므로 저장 중에는 readOnly로만 막는다
@@ -54,11 +56,12 @@ export function QuickAddTask({
         type="date"
         defaultValue={defaultDate}
         aria-label="예정일"
-        className="!w-auto"
+        className="min-w-0 !w-full sm:!w-auto"
       />
+      {children}
       {projectId && <input type="hidden" name="projectId" value={projectId} />}
       {error && (
-        <span role="alert" className="text-xs text-danger">
+        <span role="alert" className="col-span-2 text-xs text-danger">
           {error}
         </span>
       )}
