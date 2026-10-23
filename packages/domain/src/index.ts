@@ -23,3 +23,7 @@ export * from './backup/export';
 export * from './backup/restore';
 
 export * from './search';
+
+export * from './notion/file';
+export * from './notion/mapping';
+export * from './notion/import';

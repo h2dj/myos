@@ -11,6 +11,8 @@ import {
   captureInbox,
   convertInboxToTask,
   deleteTask,
+  previewNotionImport,
+  importNotionSample,
 } from '../src';
 
 export async function seedRehearsal(db: Db) {
@@ -80,6 +82,16 @@ export async function seedRehearsal(db: Db) {
     sourceId: note!.id,
     targetType: 'task',
     targetId: task!.id,
+  });
+  const source = {
+    text: JSON.stringify([{ id: randomUUID(), title: '가져오기 검증 항목' }]),
+    format: 'json' as const,
+    mapping: { kind: 'task' as const, columns: { sourceId: 'id', title: 'title' } },
+  };
+  const preview = await previewNotionImport(db, actor, workspaceId, source, 'Asia/Seoul');
+  await importNotionSample(db, actor, workspaceId, source, 'Asia/Seoul', {
+    digest: preview.digest,
+    selected: [0],
   });
   return { actor, workspaceId, projectId: child.id };
 }

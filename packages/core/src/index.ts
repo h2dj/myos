@@ -7,3 +7,5 @@ export * from './schedule';
 export * from './recurrence';
 export * from './project-hierarchy';
 export * from './performance';
+
+export * from './notion-fields';

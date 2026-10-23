@@ -106,7 +106,7 @@ describe('공간 업무 백업', () => {
     const user = await fixture();
     const backup = await exportWorkspaceBackup(db, user.actor, user.workspaceId);
     expect(() => parseWorkspaceBackup('{')).toThrow('JSON');
-    expect(() => parseWorkspaceBackup(JSON.stringify({ ...backup, version: 2 }))).toThrow('형식');
+    expect(() => parseWorkspaceBackup(JSON.stringify({ ...backup, version: 99 }))).toThrow('형식');
     expect(() =>
       parseWorkspaceBackup(JSON.stringify({ ...backup, sha256: '0'.repeat(64) })),
     ).toThrow('체크섬');
