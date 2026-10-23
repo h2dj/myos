@@ -41,6 +41,10 @@ jobs:
           pnpm db:check
           pnpm db:generate
           test -z "$(git status --porcelain packages/db/migrations)"
+      - name: 독립 DB 백업 복원 리허설
+        run: pnpm backup:rehearse
+      - name: 합성 데이터 성능 측정 및 쿼리 감소 확인
+        run: pnpm perf:benchmark
       - run: pnpm build
       - name: 브라우저 의존성 다운로드 설정
         run: |

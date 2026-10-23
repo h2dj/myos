@@ -1,5 +1,5 @@
 import { schema } from '@myos/db';
-import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAccess } from './access';
 import { recordAudit } from './audit';
@@ -233,4 +233,14 @@ async function validateParent(
     visited.add(id);
     id = parents.get(id);
   }
+}
+
+/** 할 일 선택지에는 진행률 집계와 프로젝트 본문이 필요하지 않다. */
+export async function listProjectOptions(db: Executor, actor: Actor, workspaceId: string) {
+  await requireAccess(db, actor, workspaceId, 'read');
+  return db
+    .select({ id: projects.id, name: projects.name, parentId: projects.parentId })
+    .from(projects)
+    .where(and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt)))
+    .orderBy(asc(projects.name));
 }

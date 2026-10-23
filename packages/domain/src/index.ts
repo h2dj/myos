@@ -18,3 +18,6 @@ export * from './automations';
 export * from './maintenance';
 
 export * from './activities';
+export * from './backup/format';
+export * from './backup/export';
+export * from './backup/restore';

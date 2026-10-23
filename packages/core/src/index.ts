@@ -6,3 +6,4 @@ export * from './widgets';
 export * from './schedule';
 export * from './recurrence';
 export * from './project-hierarchy';
+export * from './performance';

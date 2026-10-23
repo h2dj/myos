@@ -17,7 +17,11 @@
     "db:up": "docker compose up -d db",
     "db:generate": "pnpm --filter @myos/db generate",
     "db:migrate": "pnpm --filter @myos/db migrate",
-    "db:check": "pnpm --filter @myos/db check"
+    "db:check": "pnpm --filter @myos/db check",
+    "backup:verify": "pnpm --filter @myos/domain --silent backup:verify",
+    "backup:rehearse": "pnpm --filter @myos/domain --silent backup:rehearse",
+    "perf:benchmark": "pnpm --filter @myos/domain --silent perf:benchmark",
+    "perf:report": "pnpm --filter @myos/domain --silent perf:report"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

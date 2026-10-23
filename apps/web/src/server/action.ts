@@ -1,4 +1,6 @@
 import 'server-only';
+import type { TimingOperation } from '@myos/core';
+import { measure, recordTiming } from './performance';
 import { DomainError } from '@myos/domain';
 import { revalidatePath } from 'next/cache';
 import { requireSession, type Session } from './auth/session';
@@ -12,15 +14,28 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 export async function runAction<T>(
   fn: (session: Session) => Promise<T>,
   revalidate: string[] = [],
+  operation: TimingOperation = 'action',
 ): Promise<ActionResult<T>> {
-  const session = await requireSession();
+  const started = performance.now();
+  let ok = false;
   try {
-    const data = await fn(session);
-    for (const path of revalidate) revalidatePath(path, 'layout');
+    const session = await measure(operation, 'session', requireSession);
+    const data = await measure(operation, 'mutation', () => fn(session));
+    const invalidationStart = performance.now();
+    let invalidationOk = false;
+    try {
+      for (const path of revalidate) revalidatePath(path, 'layout');
+      invalidationOk = true;
+    } finally {
+      recordTiming(operation, 'invalidation', invalidationStart, invalidationOk);
+    }
+    ok = true;
     return { ok: true, data };
   } catch (err) {
     if (err instanceof DomainError) return { ok: false, error: err.message };
     throw err;
+  } finally {
+    recordTiming(operation, 'total', started, ok);
   }
 }
 

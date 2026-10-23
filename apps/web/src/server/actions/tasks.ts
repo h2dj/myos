@@ -55,35 +55,39 @@ function recurrenceFrom(form: FormData, startDate: string): RecurrenceRule | nul
 }
 
 export async function createTaskAction(form: FormData) {
-  return runAction(async ({ actor, workspace, user }) => {
-    const today = utcToLocalDate(new Date(), user.timezone);
-    const startDate = str(form, 'date') ?? today;
-    const rule = recurrenceFrom(form, startDate);
-    const fields = taskFields(form, user.timezone);
-    if (rule) {
-      const { created } = await createRecurringTask(
-        db,
-        actor,
-        {
-          workspaceId: workspace.id,
-          title: fields.title,
-          description: fields.description,
-          projectId: fields.projectId,
-          activityId: fields.activityId,
-          activityPlaceId: fields.activityPlaceId,
-          priority: fields.priority,
-          tags: fields.tags,
-          rule,
-          timezone: user.timezone,
-          startDate,
-        },
-        today,
-      );
-      return { id: created[0] ?? null };
-    }
-    const task = await createTask(db, actor, { workspaceId: workspace.id, ...fields });
-    return { id: task.id };
-  }, PATHS);
+  return runAction(
+    async ({ actor, workspace, user }) => {
+      const today = utcToLocalDate(new Date(), user.timezone);
+      const startDate = str(form, 'date') ?? today;
+      const rule = recurrenceFrom(form, startDate);
+      const fields = taskFields(form, user.timezone);
+      if (rule) {
+        const { created } = await createRecurringTask(
+          db,
+          actor,
+          {
+            workspaceId: workspace.id,
+            title: fields.title,
+            description: fields.description,
+            projectId: fields.projectId,
+            activityId: fields.activityId,
+            activityPlaceId: fields.activityPlaceId,
+            priority: fields.priority,
+            tags: fields.tags,
+            rule,
+            timezone: user.timezone,
+            startDate,
+          },
+          today,
+        );
+        return { id: created[0] ?? null };
+      }
+      const task = await createTask(db, actor, { workspaceId: workspace.id, ...fields });
+      return { id: task.id };
+    },
+    PATHS,
+    'task.create',
+  );
 }
 
 export async function stopSeriesAction(seriesId: string) {
@@ -91,30 +95,46 @@ export async function stopSeriesAction(seriesId: string) {
 }
 
 export async function updateTaskAction(taskId: string, form: FormData) {
-  return runAction(async ({ actor, user }) => {
-    const status = str(form, 'status') as TaskStatus | undefined;
-    await updateTask(db, actor, taskId, { ...taskFields(form, user.timezone), status });
-  }, PATHS);
+  return runAction(
+    async ({ actor, user }) => {
+      const status = str(form, 'status') as TaskStatus | undefined;
+      await updateTask(db, actor, taskId, { ...taskFields(form, user.timezone), status });
+    },
+    PATHS,
+    'task.update',
+  );
 }
 
 export async function setTaskStatusAction(taskId: string, status: TaskStatus) {
-  return runAction(async ({ actor }) => {
-    await setTaskStatus(db, actor, taskId, status);
-  }, PATHS);
+  return runAction(
+    async ({ actor }) => {
+      await setTaskStatus(db, actor, taskId, status);
+    },
+    PATHS,
+    'task.status',
+  );
 }
 
 export async function taskQuickAction(taskId: string, action: TaskQuickAction) {
-  return runAction(async ({ actor, user }) => {
-    await runTaskQuickAction(db, actor, taskId, action, user.timezone);
-  }, PATHS);
+  return runAction(
+    async ({ actor, user }) => {
+      await runTaskQuickAction(db, actor, taskId, action, user.timezone);
+    },
+    PATHS,
+    'task.quick',
+  );
 }
 
 export async function deleteTaskAction(taskId: string) {
-  return runAction(async ({ actor }) => deleteTask(db, actor, taskId), PATHS);
+  return runAction(async ({ actor }) => deleteTask(db, actor, taskId), PATHS, 'task.delete');
 }
 
 export async function restoreTaskAction(taskId: string) {
-  return runAction(async ({ actor }) => {
-    await restoreTask(db, actor, taskId);
-  }, PATHS);
+  return runAction(
+    async ({ actor }) => {
+      await restoreTask(db, actor, taskId);
+    },
+    PATHS,
+    'task.restore',
+  );
 }
