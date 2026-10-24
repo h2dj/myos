@@ -1,11 +1,5 @@
-import type { Metadata } from 'next';
-import { PlaceholderPage } from '@/components/placeholder-page';
-import { findNavItem } from '@/lib/navigation';
+import { redirect } from 'next/navigation';
 
-const HREF = '/calendar';
-
-export const metadata: Metadata = { title: findNavItem(HREF).label };
-
-export default function Page() {
-  return <PlaceholderPage href={HREF} />;
+export default function CalendarPage() {
+  redirect('/tasks?view=calendar');
 }

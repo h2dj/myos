@@ -1,5 +1,6 @@
 'use client';
 
+import { TaskCalendar } from './task-calendar';
 import { TASK_STATUS_LABEL } from '@/lib/labels';
 import {
   TASK_BUCKETS,
@@ -37,6 +38,8 @@ export function TaskView({
   now,
   view,
   fixedProjectId,
+  calendarDate,
+  calendarMode,
   activities,
   activityPlaces,
 }: {
@@ -46,7 +49,9 @@ export function TaskView({
   activityPlaces: ActivityPlace[];
   timeZone: string;
   now: string;
-  view: 'list' | 'board';
+  view: 'list' | 'board' | 'calendar';
+  calendarDate?: string;
+  calendarMode?: 'month' | 'week';
   /** 프로젝트 상세에서 쓸 때: 새 할 일을 이 프로젝트에 넣고 프로젝트 필터를 숨긴다 */
   fixedProjectId?: string;
 }) {
@@ -59,6 +64,7 @@ export function TaskView({
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState<TaskWithTags | null>(null);
   const [creating, setCreating] = useState(false);
+  const [createDate, setCreateDate] = useState<string>();
   const [filters, setFilters] = useState({ projectId: '', priority: '', tag: '' });
 
   const allTags = useMemo(
@@ -96,7 +102,13 @@ export function TaskView({
   return (
     <div className="space-y-4">
       <QuickAddTask defaultDate={today} projectId={fixedProjectId}>
-        <Button onClick={() => setCreating(true)} variant="secondary">
+        <Button
+          onClick={() => {
+            setCreateDate(undefined);
+            setCreating(true);
+          }}
+          variant="secondary"
+        >
           <Plus className="size-4" /> 자세히 추가
         </Button>
       </QuickAddTask>
@@ -145,7 +157,20 @@ export function TaskView({
 
       <FormMessage error={error} />
 
-      {view === 'list' ? (
+      {view === 'calendar' ? (
+        <TaskCalendar
+          tasks={filtered}
+          date={calendarDate!}
+          mode={calendarMode!}
+          today={today}
+          timeZone={timeZone}
+          onOpen={setEditing}
+          onCreate={(day) => {
+            setCreateDate(day);
+            setCreating(true);
+          }}
+        />
+      ) : view === 'list' ? (
         <BucketList
           tasks={filtered}
           timeZone={timeZone}
@@ -166,7 +191,7 @@ export function TaskView({
           activities={activities}
           activityPlaces={activityPlaces}
           timeZone={timeZone}
-          defaults={{ projectId: fixedProjectId, date: today }}
+          defaults={{ projectId: fixedProjectId, date: createDate ?? today }}
           onDone={() => setCreating(false)}
         />
       </Dialog>

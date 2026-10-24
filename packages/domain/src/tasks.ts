@@ -258,6 +258,7 @@ const listInput = z.object({
   /** 완료된 일은 이 시각 이후 완료분만 포함 (예: 오늘 완료한 일) */
   completedSince: z.coerce.date().optional(),
   trash: z.boolean().optional(),
+  calendar: z.boolean().optional(),
   limit: z.number().int().min(1).max(500).default(200),
 });
 
@@ -292,8 +293,17 @@ export async function listTasks(
       : undefined,
     q.status ? inArray(tasks.status, q.status) : undefined,
     // 계산식 비교는 drizzle이 Date를 직렬화하지 않으므로 ISO 문자열로 넘긴다
-    q.from ? sql`${anchor} >= ${q.from.toISOString()}::timestamptz` : undefined,
-    q.to ? sql`${anchor} <= ${q.to.toISOString()}::timestamptz` : undefined,
+    q.from && !q.calendar ? sql`${anchor} >= ${q.from.toISOString()}::timestamptz` : undefined,
+    q.to && !q.calendar ? sql`${anchor} <= ${q.to.toISOString()}::timestamptz` : undefined,
+    q.calendar && q.from && q.to
+      ? or(
+          and(gte(tasks.dueAt, q.from), sql`${tasks.dueAt} < ${q.to.toISOString()}::timestamptz`),
+          and(
+            sql`${tasks.scheduledStart} < ${q.to.toISOString()}::timestamptz`,
+            sql`coalesce(${tasks.scheduledEnd}, ${tasks.scheduledStart}) >= ${q.from.toISOString()}::timestamptz`,
+          ),
+        )
+      : undefined,
     q.completedSince
       ? or(
           notInArray(tasks.status, ['done', 'cancelled']),

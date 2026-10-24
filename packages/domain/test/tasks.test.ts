@@ -12,6 +12,42 @@ import {
 import { db, newUser } from './helpers';
 
 describe('할 일 (TASK-01)', () => {
+  it('캘린더는 겹치는 예정 기간과 별도 마감일을 조회하고 삭제·다른 공간을 제외한다', async () => {
+    const { actor, workspaceId } = await newUser();
+    await createTask(db, actor, {
+      workspaceId,
+      title: '다일',
+      scheduledStart: new Date('2026-03-01Z'),
+      scheduledEnd: new Date('2026-04-03Z'),
+    });
+    await createTask(db, actor, {
+      workspaceId,
+      title: '별도 마감',
+      scheduledStart: new Date('2026-02-01Z'),
+      dueAt: new Date('2026-04-02Z'),
+    });
+    await createTask(db, actor, { workspaceId, title: '경계 밖', dueAt: new Date('2026-04-08Z') });
+    const deleted = await createTask(db, actor, {
+      workspaceId,
+      title: '삭제',
+      dueAt: new Date('2026-04-02Z'),
+    });
+    await deleteTask(db, actor, deleted.id);
+    const other = await newUser();
+    await createTask(db, other.actor, {
+      workspaceId: other.workspaceId,
+      title: '다른 공간',
+      dueAt: new Date('2026-04-02Z'),
+    });
+    const rows = await listTasks(db, actor, {
+      workspaceId,
+      calendar: true,
+      from: new Date('2026-04-01Z'),
+      to: new Date('2026-04-08Z'),
+    });
+    expect(rows.map((t) => t.title).sort()).toEqual(['다일', '별도 마감']);
+  });
+
   it('생성·수정·완료·삭제·복구', async () => {
     const { actor, workspaceId } = await newUser();
     const task = await createTask(db, actor, {
