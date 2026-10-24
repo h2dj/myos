@@ -50,7 +50,7 @@ export const MAIN_NAV: NavItem[] = [
     href: '/calendar',
     label: '캘린더',
     icon: CalendarDays,
-    description: '내 일정과 Google Calendar 일정을 함께 봅니다.',
+    description: '할 일의 예정 기간과 마감일을 월간·주간으로 확인합니다.',
     phase: 4,
   },
   {

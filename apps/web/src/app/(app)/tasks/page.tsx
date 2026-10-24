@@ -1,5 +1,5 @@
 import { measure } from '@/server/performance';
-import { getPeriodRange } from '@myos/core';
+import { calendarRange, localDateToUtc, utcToLocalDate, getPeriodRange } from '@myos/core';
 import { listProjectOptions, listTasks, listActivities, listActivityPlaces } from '@myos/domain';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/page-header';
@@ -11,19 +11,22 @@ import { db } from '@/server/db';
 
 export const metadata: Metadata = { title: '할 일' };
 
-const VIEWS = ['list', 'board', 'trash'] as const;
+const VIEWS = ['list', 'board', 'calendar', 'trash'] as const;
 type View = (typeof VIEWS)[number];
 
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; date?: string; mode?: string }>;
 }) {
-  const { view: rawView } = await searchParams;
+  const { view: rawView, date, mode: rawMode } = await searchParams;
   const view: View = VIEWS.includes(rawView as View) ? (rawView as View) : 'list';
   const { actor, workspace, user } = await requireSession();
   const now = new Date();
   const { start: todayStart } = getPeriodRange('today', now, user.timezone);
+
+  const mode = rawMode === 'week' ? 'week' : 'month';
+  const range = calendarRange(date, mode, utcToLocalDate(now, user.timezone));
 
   const [tasks, projects, activities, activityPlaces] = await Promise.all([
     measure('tasks.list', 'query', () =>
@@ -31,7 +34,14 @@ export default async function TasksPage({
         workspaceId: workspace.id,
         trash: view === 'trash',
         // 완료한 일은 오늘 완료분만 보여준다
-        completedSince: view === 'trash' ? undefined : todayStart!,
+        completedSince: view === 'trash' || view === 'calendar' ? undefined : todayStart!,
+        ...(view === 'calendar'
+          ? {
+              calendar: true,
+              from: localDateToUtc(range.start, user.timezone),
+              to: localDateToUtc(range.end, user.timezone),
+            }
+          : {}),
         limit: 500,
       }),
     ),
@@ -48,7 +58,7 @@ export default async function TasksPage({
         tabs={[
           { key: 'list', label: '목록', href: '/tasks' },
           { key: 'board', label: '보드', href: '/tasks?view=board' },
-          { key: 'calendar', label: '캘린더', href: '#', disabled: true },
+          { key: 'calendar', label: '캘린더', href: '/tasks?view=calendar' },
           { key: 'eisenhower', label: '아이젠하워', href: '#', disabled: true },
           { key: 'trash', label: '휴지통', href: '/tasks?view=trash' },
         ]}
@@ -74,6 +84,8 @@ export default async function TasksPage({
           timeZone={user.timezone}
           now={now.toISOString()}
           view={view}
+          calendarDate={range.date}
+          calendarMode={mode}
         />
       )}
     </>
