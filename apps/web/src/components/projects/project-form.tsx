@@ -27,6 +27,21 @@ export function ProjectForm({
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
   const local = (d: Date | null | undefined) => (d ? utcToLocalDate(new Date(d), timeZone) : '');
+  const [startAt, setStartAt] = useState(() => local(project?.startAt));
+  const [dueAt, setDueAt] = useState(() => local(project?.dueAt));
+  function choosePeriod(period: 'year' | 'nextYear' | 'month') {
+    const today = utcToLocalDate(new Date(), timeZone);
+    const year = Number(today.slice(0, 4)) + (period === 'nextYear' ? 1 : 0);
+    if (period === 'month') {
+      setStartAt(`${today.slice(0, 7)}-01`);
+      setDueAt(
+        new Date(Date.UTC(year, Number(today.slice(5, 7)), 0, 12)).toISOString().slice(0, 10),
+      );
+    } else {
+      setStartAt(`${year}-01-01`);
+      setDueAt(`${year}-12-31`);
+    }
+  }
 
   return (
     <form
@@ -66,6 +81,23 @@ export function ProjectForm({
             ))}
         </Select>
       </Field>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">기간 빠른 선택</legend>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => choosePeriod('year')}>
+            올해
+          </Button>
+          <Button variant="secondary" onClick={() => choosePeriod('nextYear')}>
+            내년
+          </Button>
+          <Button variant="secondary" onClick={() => choosePeriod('month')}>
+            이번 달
+          </Button>
+        </div>
+        <p className="text-xs text-muted">
+          사용자 시간대 기준 시작일과 마감일을 채웁니다. 날짜를 직접 수정할 수도 있습니다.
+        </p>
+      </fieldset>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="상태">
           <Select name="status" defaultValue={project?.status ?? 'active'}>
@@ -77,10 +109,20 @@ export function ProjectForm({
           </Select>
         </Field>
         <Field label="시작일">
-          <Input name="startAt" type="date" defaultValue={local(project?.startAt)} />
+          <Input
+            name="startAt"
+            type="date"
+            value={startAt}
+            onChange={(e) => setStartAt(e.target.value)}
+          />
         </Field>
         <Field label="마감일">
-          <Input name="dueAt" type="date" defaultValue={local(project?.dueAt)} />
+          <Input
+            name="dueAt"
+            type="date"
+            value={dueAt}
+            onChange={(e) => setDueAt(e.target.value)}
+          />
         </Field>
       </div>
       <Field label="설명">

@@ -2,6 +2,7 @@
 
 import { formatLocalDay, taskAnchorDate, utcToLocalDate } from '@myos/core';
 import type { TaskQuickAction, TaskStatus, TaskWithTags } from '@myos/domain';
+import Link from 'next/link';
 import { MoreHorizontal, Repeat } from 'lucide-react';
 import { TASK_STATUS_LABEL } from '@/lib/labels';
 import { Select } from '../ui/field';
@@ -59,10 +60,14 @@ export function TaskRow({
           <TagChip key={t.id} name={t.name} />
         ))}
       </div>
-      {task.projectName && (
-        <span className="hidden max-w-32 truncate text-xs text-muted md:inline">
+      {task.projectName && task.projectId && (
+        <Link
+          href={`/projects/${task.projectId}`}
+          className="max-w-32 truncate text-xs text-muted hover:text-accent hover:underline"
+          title={`${task.projectName} 프로젝트 정보`}
+        >
           {task.projectName}
-        </span>
+        </Link>
       )}
       <Select
         aria-label={`${task.title} 상태`}
