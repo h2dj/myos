@@ -57,6 +57,13 @@
       "when": 1792899331439,
       "tag": "0007_life_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792908750682,
+      "tag": "0008_finance_basics",
+      "breakpoints": true
     }
   ]
 }

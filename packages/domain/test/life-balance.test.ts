@@ -195,13 +195,17 @@ describe('개인 삶의 균형 회고', () => {
       randomUUID(),
     );
     const backup = await exportWorkspaceBackup(db, user.actor, user.workspaceId);
-    expect(backup.version).toBe(3);
+    expect(backup.version).toBe(4);
     expect(backup.tables.lifeReviews).toHaveLength(1);
     expect(JSON.stringify(backup)).not.toContain('다른 사용자의 비밀');
     expect(parseWorkspaceBackup(JSON.stringify(backup))).toEqual(backup);
     const { sha256: _sha256, ...payload } = backup;
     void _sha256;
     const legacy = structuredClone(payload);
+    delete legacy.tables.financeAccounts;
+    delete legacy.tables.financeEntries;
+    delete legacy.tables.financeBudgets;
+    expect(sealWorkspaceBackup({ ...legacy, version: 3 }).version).toBe(3);
     delete legacy.tables.lifeReviews;
     expect(sealWorkspaceBackup({ ...legacy, version: 2 }).version).toBe(2);
     delete legacy.tables.externalRefs;

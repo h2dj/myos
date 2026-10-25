@@ -27,6 +27,54 @@ const rule = z.discriminatedUnion('freq', [
 ]);
 const tablesSchema = z
   .object({
+    financeAccounts: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            ...timestamps,
+            name: z.string().min(1).max(100),
+            kind: z.enum(schema.financeAccounts.kind.enumValues),
+            openingBalance: z.string().regex(/^-?(0|[1-9]\d{0,17})$/),
+            archivedAt: nullableDate,
+          })
+          .strict(),
+      )
+      .optional(),
+    financeEntries: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            ...timestamps,
+            deletedAt: nullableDate,
+            accountId: uuid,
+            targetAccountId: nullableId,
+            kind: z.enum(schema.financeEntries.kind.enumValues),
+            amount: z.string().regex(/^[1-9]\d{0,17}$/),
+            occurredOn: day,
+            category: z.string().min(1).max(50),
+            note: z.string().max(1000),
+          })
+          .strict(),
+      )
+      .optional(),
+    financeBudgets: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            ...timestamps,
+            month: day.refine((value) => value.endsWith('-01')),
+            category: z.string().min(1).max(50),
+            amount: z.string().regex(/^(0|[1-9]\d{0,17})$/),
+          })
+          .strict(),
+      )
+      .optional(),
     lifeReviews: z
       .array(
         z
@@ -218,7 +266,7 @@ const tablesSchema = z
 const payloadSchema = z
   .object({
     format: z.literal('myos-workspace'),
-    version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
     exportedAt: date,
     workspace: z
       .object({
@@ -237,6 +285,9 @@ export type BackupPayload = z.infer<typeof payloadSchema>;
 export type BackupTables = BackupPayload['tables'];
 export type WorkspaceBackup = BackupPayload & { sha256: string };
 export const BACKUP_TABLES = [
+  'financeAccounts',
+  'financeEntries',
+  'financeBudgets',
   'lifeReviews',
   'externalRefs',
   'places',
@@ -285,12 +336,28 @@ function validateRelations(backup: BackupPayload) {
     (backup.version === 1 && t.externalRefs !== undefined) ||
     (backup.version >= 2 && t.externalRefs === undefined) ||
     (backup.version < 3 && t.lifeReviews !== undefined) ||
-    (backup.version === 3 && t.lifeReviews === undefined)
+    (backup.version >= 3 && t.lifeReviews === undefined) ||
+    (backup.version < 4 &&
+      (t.financeAccounts !== undefined ||
+        t.financeEntries !== undefined ||
+        t.financeBudgets !== undefined)) ||
+    (backup.version === 4 &&
+      (t.financeAccounts === undefined ||
+        t.financeEntries === undefined ||
+        t.financeBudgets === undefined))
   )
     throw new ValidationError('백업 버전과 가져오기 이력 형식이 일치하지 않습니다.');
   for (const review of t.lifeReviews ?? []) {
     if (workspace.type !== 'personal' || review.userId !== workspace.ownerId)
       throw new ValidationError('개인 회고의 소유자 정보가 올바르지 않습니다.');
+  }
+  for (const row of [
+    ...(t.financeAccounts ?? []),
+    ...(t.financeEntries ?? []),
+    ...(t.financeBudgets ?? []),
+  ]) {
+    if (workspace.type !== 'personal' || row.userId !== workspace.ownerId)
+      throw new ValidationError('재정 데이터의 소유자 정보가 올바르지 않습니다.');
   }
   const sources = new Set<string>();
   for (const ref of t.externalRefs ?? []) {
@@ -326,6 +393,23 @@ function validateRelations(backup: BackupPayload) {
   const ref = (id: string | null, set: Set<string>) => {
     if (id && !set.has(id)) throw new ValidationError('백업의 연결 정보가 올바르지 않습니다.');
   };
+  const financialAccounts = ids(t.financeAccounts ?? []);
+  for (const entry of t.financeEntries ?? []) {
+    ref(entry.accountId, financialAccounts);
+    ref(entry.targetAccountId, financialAccounts);
+    if (
+      entry.kind === 'transfer'
+        ? !entry.targetAccountId || entry.targetAccountId === entry.accountId
+        : entry.targetAccountId !== null
+    )
+      throw new ValidationError('재정 거래의 계좌 연결이 올바르지 않습니다.');
+  }
+  const budgetKeys = new Set<string>();
+  for (const budget of t.financeBudgets ?? []) {
+    const key = `${budget.month}:${budget.category}`;
+    if (budgetKeys.has(key)) throw new ValidationError('월별 카테고리 예산이 중복되어 있습니다.');
+    budgetKeys.add(key);
+  }
   const taskRefs = (r: {
     projectId: string | null;
     activityId: string | null;
