@@ -1,5 +1,6 @@
 import {
   LIFE_FRAMEWORKS,
+  normalizeLifeBalanceSnapshot,
   lifeAreaFor,
   localDateToUtc,
   shiftCalendarDate,
@@ -192,7 +193,10 @@ export async function listLifeReviews(db: Executor, actor: Actor) {
     )
     .orderBy(desc(schema.lifeReviews.createdAt), desc(schema.lifeReviews.id))
     .limit(50);
-  return rows.map((row) => ({ ...row, snapshot: row.snapshot as unknown as LifeBalanceSnapshot }));
+  return rows.map((row) => ({
+    ...row,
+    snapshot: normalizeLifeBalanceSnapshot(row.snapshot as unknown as LifeBalanceSnapshot),
+  }));
 }
 
 export async function deleteLifeReview(db: Executor, actor: Actor, id: string) {

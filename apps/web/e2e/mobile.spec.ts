@@ -59,5 +59,11 @@ test('모바일 삶의 균형은 점수와 표를 화면 안에서 제공한다'
   await page.getByRole('button', { name: '활동 불러오고 점수 계산' }).click();
   await expect(page.getByRole('img', { name: /레이더 차트/ })).toBeVisible();
   await expect(page.getByRole('region', { name: '현재 회고 결과' })).toContainText('완료 기록 0건');
+  const result = page.getByRole('region', { name: '현재 회고 결과' });
+  await expect(result).toContainText('기록 없음');
+  await expect(result.getByRole('row', { name: /건강/ })).toContainText('자기평가만');
+  await expect(
+    result.getByRole('row', { name: /건강/ }).getByRole('cell', { name: /5.0/ }),
+  ).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });

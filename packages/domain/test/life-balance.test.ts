@@ -58,6 +58,36 @@ async function completed(
 }
 
 describe('개인 삶의 균형 회고', () => {
+  it('기존 회고도 당시 활동 건수로 자기평가만 반영하며 원본·백업은 보존한다', async () => {
+    const user = await newUser();
+    const saved = await saveLifeBalance(db, user.actor, input(), randomUUID());
+    const legacy = structuredClone(
+      saved.snapshot,
+    ) as unknown as import('@myos/core').LifeBalanceSnapshot;
+    legacy.version = 1;
+    legacy.activityScore = 0;
+    legacy.combined = 4.2;
+    legacy.areas = legacy.areas.map((area) => ({ ...area, activityScore: 0, combined: 4.2 }));
+    await db
+      .update(schema.lifeReviews)
+      .set({ snapshot: legacy as unknown as Record<string, unknown> })
+      .where(eq(schema.lifeReviews.id, saved.id));
+    await completed(user.actor, user.workspaceId, '2026-03-08T03:00Z');
+    const [review] = await listLifeReviews(db, user.actor);
+    expect(review!.snapshot).toMatchObject({
+      version: 2,
+      combined: 6,
+      activityScore: null,
+      totalCompleted: 0,
+    });
+    expect(review!.snapshot.areas.every((a) => a.combined === 6 && a.activityScore === null)).toBe(
+      true,
+    );
+    const backup = await exportWorkspaceBackup(db, user.actor, user.workspaceId);
+    expect(backup.tables.lifeReviews![0]!.snapshot).toMatchObject({ version: 1, combined: 4.2 });
+    expect(parseWorkspaceBackup(JSON.stringify(backup))).toEqual(backup);
+  });
+
   it('사용자 시간대의 완료일을 DST 포함해 반열린 구간으로 집계하고 완료·삭제·공간을 구분한다', async () => {
     const user = await newUser();
     await updateProfile(db, user.actor, { name: 'reviewer', timezone: 'America/New_York' });

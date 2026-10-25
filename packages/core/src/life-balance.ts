@@ -74,16 +74,16 @@ export interface LifeAreaScore {
   selfScore: number;
   completed: number;
   target: number;
-  activityScore: number;
+  activityScore: number | null;
   combined: number;
 }
 export interface LifeBalanceSnapshot {
-  version: 1;
+  version: 1 | 2;
   input: LifeBalanceInput;
   timeZone: string;
   areas: LifeAreaScore[];
   selfScore: number;
-  activityScore: number;
+  activityScore: number | null;
   combined: number;
   totalCompleted: number;
   unclassified: number;
@@ -114,36 +114,68 @@ export function scoreLifeBalance(
     }
     counts.set(area, (counts.get(area) ?? 0) + 1);
   }
-  const round = (n: number) => Math.round(n * 10) / 10;
-  const areas = input.areas.map((area) => {
-    const completed = counts.get(area.id) ?? 0;
-    const activityScore = round(Math.min(1, completed / area.target) * 10);
-    return {
-      id: area.id,
-      label: LIFE_FRAMEWORKS[input.framework].areas.find((a) => a.id === area.id)!.label,
-      selfScore: area.selfScore,
-      completed,
-      target: area.target,
-      activityScore,
-      combined: round(
-        (area.selfScore * input.selfWeight + activityScore * (100 - input.selfWeight)) / 100,
-      ),
-    };
-  });
-  const mean = (field: 'selfScore' | 'activityScore' | 'combined') =>
-    round(areas.reduce((sum, area) => sum + area[field], 0) / areas.length);
+  const areas = input.areas.map((area) =>
+    scoreLifeArea(
+      {
+        id: area.id,
+        label: LIFE_FRAMEWORKS[input.framework].areas.find((a) => a.id === area.id)!.label,
+        selfScore: area.selfScore,
+        completed: counts.get(area.id) ?? 0,
+        target: area.target,
+      },
+      input.selfWeight,
+    ),
+  );
   return {
-    version: 1,
+    version: 2,
     input,
     timeZone,
     areas,
-    selfScore: mean('selfScore'),
-    activityScore: mean('activityScore'),
-    combined: mean('combined'),
+    ...summarizeLifeAreas(areas),
     totalCompleted: evidence.length,
     unclassified,
     conflicts,
   };
+}
+
+const roundLifeScore = (value: number) => Math.round(value * 10) / 10;
+
+function scoreLifeArea(
+  area: Omit<LifeAreaScore, 'activityScore' | 'combined'>,
+  selfWeight: number,
+): LifeAreaScore {
+  const activityScore =
+    area.completed > 0 ? roundLifeScore(Math.min(1, area.completed / area.target) * 10) : null;
+  return {
+    ...area,
+    activityScore,
+    combined:
+      activityScore === null
+        ? area.selfScore
+        : roundLifeScore((area.selfScore * selfWeight + activityScore * (100 - selfWeight)) / 100),
+  };
+}
+
+function summarizeLifeAreas(areas: LifeAreaScore[]) {
+  const mean = (field: 'selfScore' | 'combined') =>
+    roundLifeScore(areas.reduce((sum, area) => sum + area[field], 0) / areas.length);
+  const recorded = areas.flatMap((area) =>
+    area.activityScore === null ? [] : [area.activityScore],
+  );
+  return {
+    selfScore: mean('selfScore'),
+    combined: mean('combined'),
+    activityScore: recorded.length
+      ? roundLifeScore(recorded.reduce((sum, score) => sum + score, 0) / recorded.length)
+      : null,
+  };
+}
+
+/** 과거 회고는 당시 저장된 건수로 새 규칙을 적용한다. 현재 활동을 다시 조회하지 않는다. */
+export function normalizeLifeBalanceSnapshot(snapshot: LifeBalanceSnapshot): LifeBalanceSnapshot {
+  if (snapshot.version === 2) return snapshot;
+  const areas = snapshot.areas.map((area) => scoreLifeArea(area, snapshot.input.selfWeight));
+  return { ...snapshot, version: 2, areas, ...summarizeLifeAreas(areas) };
 }
 
 export function comparableLifeReviews(a: LifeBalanceSnapshot, b: LifeBalanceSnapshot) {
