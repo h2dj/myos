@@ -98,7 +98,14 @@ export async function exportWorkspaceBackup(db: Db, actor: Actor, workspaceId: s
               .limit(limit)
           : [];
       const includeFinance = workspace!.type === 'personal' && workspace!.ownerId === actor.userId;
-      const [financeAccounts, financeEntries, financeBudgets, financeComments] = includeFinance
+      const [
+        financeAccounts,
+        financeEntries,
+        financeBudgets,
+        financeComments,
+        financePlans,
+        financePlanOutcomes,
+      ] = includeFinance
         ? await Promise.all([
             tx
               .select()
@@ -140,17 +147,39 @@ export async function exportWorkspaceBackup(db: Db, actor: Actor, workspaceId: s
                 ),
               )
               .limit(limit),
+            tx
+              .select()
+              .from(schema.financePlans)
+              .where(
+                and(
+                  eq(schema.financePlans.workspaceId, workspaceId),
+                  eq(schema.financePlans.userId, actor.userId),
+                ),
+              )
+              .limit(limit),
+            tx
+              .select()
+              .from(schema.financePlanOutcomes)
+              .where(
+                and(
+                  eq(schema.financePlanOutcomes.workspaceId, workspaceId),
+                  eq(schema.financePlanOutcomes.userId, actor.userId),
+                ),
+              )
+              .limit(limit),
           ])
-        : [[], [], [], []];
+        : [[], [], [], [], [], []];
       // Date를 명시적인 ISO 문자열로 바꿔 파일 형식을 고정한다.
       return sealWorkspaceBackup(
         JSON.parse(
           JSON.stringify({
             format: 'myos-workspace',
-            version: 5,
+            version: 6,
             exportedAt: new Date().toISOString(),
             workspace,
             tables: {
+              financePlans,
+              financePlanOutcomes,
               financeComments,
               financeAccounts,
               financeEntries,

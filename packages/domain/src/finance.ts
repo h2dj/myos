@@ -3,7 +3,7 @@ import { schema, type Db } from '@myos/db';
 import { and, asc, count, desc, eq, gte, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Actor, Executor } from './context';
-import { requireAccess } from './access';
+import { personalFinance } from './finance-access';
 import { NotFoundError, ValidationError } from './errors';
 import { isUuid, parse } from './validation';
 import { recordAudit } from './audit';
@@ -12,7 +12,6 @@ const {
   financeAccounts: accounts,
   financeEntries: entries,
   financeBudgets: budgets,
-  workspaces,
   users,
 } = schema;
 const unsigned = z
@@ -70,25 +69,6 @@ const budgetInput = z
   })
   .strict();
 
-async function personalFinance(db: Executor, actor: Actor, write = false) {
-  if (write)
-    await db.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${'finance:' + actor.userId}, 0))`,
-    );
-  const [workspace] = await db
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(
-      and(
-        eq(workspaces.ownerId, actor.userId),
-        eq(workspaces.type, 'personal'),
-        isNull(workspaces.deletedAt),
-      ),
-    );
-  if (!workspace) throw new NotFoundError('개인 공간');
-  await requireAccess(db, actor, workspace.id, 'manage');
-  return workspace.id;
-}
 const owned = (
   table: typeof accounts | typeof entries | typeof budgets,
   actor: Actor,
@@ -138,7 +118,7 @@ export async function archiveFinanceAccount(db: Db, actor: Actor, id: string, ar
   });
 }
 export async function saveFinanceEntry(
-  db: Db,
+  db: Executor,
   actor: Actor,
   raw: unknown,
   id: string,
@@ -259,27 +239,7 @@ export async function getFinanceOverview(
   return db.transaction(
     async (tx) => {
       const workspaceId = await personalFinance(tx, actor);
-      const allAccounts = await tx
-        .select()
-        .from(accounts)
-        .where(owned(accounts, actor, workspaceId))
-        .orderBy(asc(accounts.createdAt), asc(accounts.id));
-      const movements = await tx.execute<{ accountId: string; net: string }>(sql`
-      select account_id as "accountId", sum(delta)::text as net from (
-        select account_id, case when kind = 'income' then amount else -amount end as delta
-        from finance_entries where user_id = ${actor.userId} and workspace_id = ${workspaceId} and deleted_at is null
-        union all
-        select target_account_id, amount from finance_entries
-        where user_id = ${actor.userId} and workspace_id = ${workspaceId} and kind = 'transfer' and deleted_at is null
-      ) as movements group by account_id
-    `);
-      const netByAccount = new Map(movements.map((row) => [row.accountId, row.net]));
-      const withBalances = allAccounts.map((account) => ({
-        ...account,
-        balance: (
-          BigInt(account.openingBalance) + BigInt(netByAccount.get(account.id) ?? '0')
-        ).toString(),
-      }));
+      const withBalances = await getFinanceBalances(tx, actor, workspaceId);
       const period = and(
         owned(entries, actor, workspaceId),
         gte(entries.occurredOn, `${month}-01`),
@@ -463,4 +423,30 @@ export async function deleteFinanceComment(db: Db, actor: Actor, targetRaw: unkn
     if (!row) throw new NotFoundError('추가 메모');
     await audit(tx, actor, workspaceId, 'finance.comment.delete', id);
   });
+}
+
+export async function getFinanceBalances(db: Executor, actor: Actor, workspaceId: string) {
+  const allAccounts = await db
+    .select()
+    .from(accounts)
+    .where(owned(accounts, actor, workspaceId))
+    .orderBy(asc(accounts.createdAt), asc(accounts.id));
+  const movements = await db.execute<{ accountId: string; net: string }>(sql`
+      select account_id as "accountId", sum(delta)::text as net from (
+        select account_id, case when kind = 'income' then amount else -amount end as delta
+        from finance_entries where user_id = ${actor.userId} and workspace_id = ${workspaceId} and deleted_at is null
+        union all
+        select target_account_id, amount from finance_entries
+        where user_id = ${actor.userId} and workspace_id = ${workspaceId} and kind = 'transfer' and deleted_at is null
+      ) as movements group by account_id
+    `);
+  const netByAccount = new Map(movements.map((row) => [row.accountId, row.net]));
+  const withBalances = allAccounts.map((account) => ({
+    ...account,
+    balance: (
+      BigInt(account.openingBalance) + BigInt(netByAccount.get(account.id) ?? '0')
+    ).toString(),
+  }));
+
+  return withBalances;
 }

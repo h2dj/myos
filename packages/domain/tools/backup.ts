@@ -68,6 +68,8 @@ try {
       });
       const { sha256: _legacyHash, ...legacy } = parseWorkspaceBackup(text);
       void _legacyHash;
+      delete legacy.tables.financePlans;
+      delete legacy.tables.financePlanOutcomes;
       delete legacy.tables.financeComments;
       for (const account of legacy.tables.financeAccounts ?? []) delete account.description;
       for (const budget of legacy.tables.financeBudgets ?? []) delete budget.description;

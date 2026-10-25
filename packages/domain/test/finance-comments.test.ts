@@ -131,12 +131,14 @@ describe('계좌·예산 설명과 추가 메모', () => {
     const target = { kind: 'account', id: a.id };
     await saveFinanceComment(db, user.actor, target, { body: '백업 메모' }, randomUUID());
     const backup = await exportWorkspaceBackup(db, user.actor, user.workspaceId);
-    expect(backup.version).toBe(5);
+    expect(backup.version).toBe(6);
     expect(parseWorkspaceBackup(JSON.stringify(backup))).toEqual(backup);
     expect(backup.tables.financeComments).toHaveLength(1);
     const { sha256: _sha, ...payload } = backup;
     void _sha;
     const old = structuredClone(payload);
+    delete old.tables.financePlans;
+    delete old.tables.financePlanOutcomes;
     delete old.tables.financeComments;
     for (const a of old.tables.financeAccounts ?? []) delete a.description;
     for (const b of old.tables.financeBudgets ?? []) delete b.description;
