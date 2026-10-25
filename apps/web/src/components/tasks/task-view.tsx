@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { RelatedItemsPanel } from '../relations/related-items-panel';
 import { TaskCalendar } from './task-calendar';
 import { TASK_STATUS_LABEL } from '@/lib/labels';
@@ -339,7 +340,15 @@ function Board({
                   >
                     {t.title}
                   </button>
-                  {t.projectName && <p className="mt-1 text-xs text-muted">{t.projectName}</p>}
+                  {t.projectName && t.projectId && (
+                    <Link
+                      href={`/projects/${t.projectId}`}
+                      className="mt-1 block text-xs text-muted hover:text-accent hover:underline"
+                      title={`${t.projectName} 프로젝트 정보`}
+                    >
+                      {t.projectName}
+                    </Link>
+                  )}
                   <Select
                     aria-label={`${t.title} 상태`}
                     value={t.status}
