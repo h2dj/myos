@@ -84,5 +84,29 @@ test('모바일 재정은 계좌 입력과 거래 요약을 화면 안에 제공
   await entry.getByLabel('거래 메모').fill('모바일 식사');
   await entry.getByRole('button', { name: '거래 저장' }).click();
   await expect(page.getByRole('region', { name: '재정 요약' })).toContainText('95,000원');
+  await page.getByRole('button', { name: '모바일 생활비 통장 추가 메모', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('추가 메모 내용').fill('모바일에서 남긴 추가 정보');
+  await page.getByRole('dialog').getByRole('button', { name: '메모 추가', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('listitem')).toContainText(
+    '모바일에서 남긴 추가 정보',
+  );
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});
+
+test('모바일 하위 프로젝트 추가와 관련 항목 검색은 화면 안에서 동작한다', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await signUp(page);
+  await page.goto('/projects');
+  await page.getByRole('button', { name: '프로젝트 추가', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('이름', { exact: true }).fill('모바일 부모');
+  await page.getByRole('dialog').getByRole('button', { name: '저장', exact: true }).click();
+  await page.getByRole('button', { name: '하위 프로젝트 추가', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('이름', { exact: true }).fill('모바일 자식');
+  await page.getByRole('dialog').getByRole('button', { name: '저장', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '모바일 자식', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: '관련 항목', exact: true }).getByLabel('연결 유형'),
+  ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });

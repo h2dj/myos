@@ -33,6 +33,7 @@ export function AccountForm({ account, onDone }: { account?: FinanceAccount; onD
               name: value(form, 'name'),
               kind: value(form, 'kind'),
               openingBalance: value(form, 'openingBalance'),
+              description: value(form, 'description'),
             },
             account?.id,
           );
@@ -76,6 +77,15 @@ export function AccountForm({ account, onDone }: { account?: FinanceAccount; onD
         기록을 시작하기 직전의 잔액입니다. 카드 미결제액은 음수로 입력하세요. 수정하면 현재 잔액에도
         반영됩니다.
       </p>
+      <Field label="계좌 설명">
+        <Textarea
+          name="description"
+          rows={3}
+          maxLength={5000}
+          defaultValue={account?.description ?? ''}
+          placeholder="계좌 용도, 자동이체일, 참고 사항 등"
+        />
+      </Field>
       <FormMessage error={error} />
       <Button type="submit" disabled={pending}>
         {pending ? '저장 중…' : '계좌 저장'}
@@ -239,6 +249,7 @@ export function BudgetForm({
             month: value(form, 'month'),
             category: value(form, 'category'),
             amount: value(form, 'amount'),
+            description: value(form, 'description'),
           });
           if (!res.ok) return setError(res.error);
           onDone(res.data.month.slice(0, 7));
@@ -280,6 +291,15 @@ export function BudgetForm({
         지출 카테고리 이름과 정확히 일치해야 합니다. 같은 월·카테고리를 저장하면 기존 예산을
         수정합니다. 0원 예산도 설정할 수 있습니다.
       </p>
+      <Field label="예산 설명">
+        <Textarea
+          name="description"
+          rows={3}
+          maxLength={5000}
+          defaultValue={budget?.description ?? ''}
+          placeholder="예산을 정한 이유와 사용 기준 등"
+        />
+      </Field>
       <FormMessage error={error} />
       <Button type="submit" disabled={pending}>
         {pending ? '저장 중…' : '예산 저장'}

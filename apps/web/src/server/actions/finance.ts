@@ -1,6 +1,9 @@
 'use server';
 
 import {
+  getFinanceComments,
+  saveFinanceComment,
+  deleteFinanceComment,
   saveFinanceAccount,
   archiveFinanceAccount,
   saveFinanceEntry,
@@ -28,4 +31,19 @@ export async function saveFinanceBudgetAction(input: unknown) {
 }
 export async function deleteFinanceBudgetAction(id: string) {
   return runAction(({ actor }) => deleteFinanceBudget(db, actor, id), paths);
+}
+
+export async function getFinanceCommentsAction(target: unknown, page = 1) {
+  return runAction(({ actor }) => getFinanceComments(db, actor, target, page));
+}
+export async function saveFinanceCommentAction(
+  target: unknown,
+  input: unknown,
+  id: string,
+  editing: boolean,
+) {
+  return runAction(({ actor }) => saveFinanceComment(db, actor, target, input, id, editing), paths);
+}
+export async function deleteFinanceCommentAction(target: unknown, id: string) {
+  return runAction(({ actor }) => deleteFinanceComment(db, actor, target, id), paths);
 }

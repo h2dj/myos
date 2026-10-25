@@ -69,6 +69,13 @@ export function ActivityManager({
                 </p>
                 {a.description && <p className="text-sm text-muted">{a.description}</p>}
               </div>
+              <Link
+                href={`/activities/${a.id}`}
+                aria-label={`${a.name} 관련 항목`}
+                className="rounded-lg px-3 py-2 text-sm text-accent"
+              >
+                관련 항목
+              </Link>
               <Button
                 variant="secondary"
                 aria-label={`${a.name} 편집`}
@@ -115,6 +122,13 @@ export function ActivityManager({
                 </Link>
                 {p.description && <p className="text-sm text-muted">{p.description}</p>}
               </div>
+              <Link
+                href={`/activities/places/${p.id}`}
+                aria-label={`${p.name} 관련 항목`}
+                className="rounded-lg px-3 py-2 text-sm text-accent"
+              >
+                관련 항목
+              </Link>
               <Button
                 variant="secondary"
                 aria-label={`${p.name} 편집`}

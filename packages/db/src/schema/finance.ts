@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   date,
+  check,
   index,
   numeric,
   pgEnum,
@@ -28,6 +30,7 @@ export const financeAccounts = pgTable(
     id: id(),
     ...owner(),
     name: text('name').notNull(),
+    description: text('description').notNull().default(''),
     kind: financeAccountKind('kind').notNull(),
     openingBalance: numeric('opening_balance', { precision: 18, scale: 0 }).notNull().default('0'),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
@@ -67,6 +70,7 @@ export const financeBudgets = pgTable(
     ...owner(),
     month: date('month', { mode: 'string' }).notNull(),
     category: text('category').notNull(),
+    description: text('description').notNull().default(''),
     amount: numeric('amount', { precision: 18, scale: 0 }).notNull(),
     ...timestamps,
   },
@@ -76,6 +80,26 @@ export const financeBudgets = pgTable(
       t.workspaceId,
       t.month,
       t.category,
+    ),
+  ],
+);
+
+export const financeComments = pgTable(
+  'finance_comments',
+  {
+    id: id(),
+    ...owner(),
+    accountId: uuid('account_id').references(() => financeAccounts.id, { onDelete: 'cascade' }),
+    budgetId: uuid('budget_id').references(() => financeBudgets.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    index('finance_comments_account_idx').on(t.userId, t.accountId, t.createdAt),
+    index('finance_comments_budget_idx').on(t.userId, t.budgetId, t.createdAt),
+    check(
+      'finance_comments_one_target',
+      sql`(${t.accountId} is not null and ${t.budgetId} is null) or (${t.accountId} is null and ${t.budgetId} is not null)`,
     ),
   ],
 );

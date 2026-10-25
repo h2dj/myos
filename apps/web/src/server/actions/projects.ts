@@ -1,7 +1,13 @@
 'use server';
 
 import { localDateToUtc } from '@myos/core';
-import { createProject, deleteProject, updateProject, type ProjectStatus } from '@myos/domain';
+import {
+  createProject,
+  getProject,
+  deleteProject,
+  updateProject,
+  type ProjectStatus,
+} from '@myos/domain';
 import { db } from '../db';
 import { runAction, str } from '../action';
 
@@ -20,11 +26,13 @@ function fields(form: FormData, timeZone: string) {
   };
 }
 
-export async function createProjectAction(form: FormData) {
+export async function createProjectAction(form: FormData, parentId?: string) {
   return runAction(async ({ actor, workspace, user }) => {
+    const parent = parentId ? await getProject(db, actor, parentId) : null;
     const p = await createProject(db, actor, {
-      workspaceId: workspace.id,
+      workspaceId: parent?.workspaceId ?? workspace.id,
       ...fields(form, user.timezone),
+      ...(parent ? { parentId: parent.id } : {}),
     });
     return { id: p.id, name: p.name, parentId: p.parentId };
   }, PATHS);

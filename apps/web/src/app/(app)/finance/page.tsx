@@ -33,7 +33,7 @@ export default async function FinancePage({
         title="재정 관리"
         description="개인 공간의 원화 수입·지출·이체와 월 예산을 기록합니다."
       />
-      <FinanceView overview={overview} today={today} />
+      <FinanceView overview={overview} today={today} timeZone={user.timezone} />
     </>
   );
 }

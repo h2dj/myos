@@ -53,6 +53,11 @@ export function NoteEditor({
   return (
     <div className="space-y-4">
       <FormMessage error={error} message={message} />
+      {!note && (
+        <p className="text-xs text-muted">
+          저장한 뒤 여러 프로젝트·사업/활동·활동처·할 일에 연결할 수 있습니다.
+        </p>
+      )}
       {deleted && note && (
         <div className="flex items-center justify-between rounded-lg bg-surface-muted px-4 py-3 text-sm">
           휴지통에 있는 노트입니다.

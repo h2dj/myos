@@ -15,8 +15,10 @@ export function ProjectForm({
   timeZone,
   onDone,
   projects = [],
+  defaultParentId,
 }: {
   project?: Project;
+  defaultParentId?: string;
   projects?: Pick<Project, 'id' | 'name' | 'parentId'>[];
   timeZone: string;
   onDone: () => void;
@@ -35,7 +37,7 @@ export function ProjectForm({
             if (!res.ok) return setError(res.error);
             onDone();
           } else {
-            const res = await createProjectAction(form);
+            const res = await createProjectAction(form, defaultParentId);
             if (!res.ok) return setError(res.error);
             onDone();
             router.push(`/projects/${res.data.id}`);
@@ -49,7 +51,11 @@ export function ProjectForm({
         <Input name="name" required defaultValue={project?.name} autoFocus maxLength={200} />
       </Field>
       <Field label="상위 프로젝트">
-        <Select name="parentId" defaultValue={project?.parentId ?? ''}>
+        <Select
+          name="parentId"
+          disabled={!!defaultParentId}
+          defaultValue={project?.parentId ?? defaultParentId ?? ''}
+        >
           <option value="">없음 (최상위)</option>
           {projects
             .filter((p) => p.id !== project?.id)

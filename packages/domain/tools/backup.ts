@@ -5,6 +5,7 @@ import {
   getFinanceOverview,
   restoreBackupForVerification,
   parseWorkspaceBackup,
+  sealWorkspaceBackup,
   MAX_BACKUP_BYTES,
   ValidationError,
   previewNotionImport,
@@ -24,7 +25,7 @@ try {
       const reviewMonth = utcToLocalDate(new Date(), 'Asia/Seoul').slice(0, 7);
       const financeBefore = await getFinanceOverview(source.db, actor, reviewMonth);
       const text = JSON.stringify(await exportWorkspaceBackup(source.db, actor, workspaceId));
-      return withIsolatedDb(async (target) => {
+      const current = await withIsolatedDb(async (target) => {
         const result = await restoreBackupForVerification(target.db, text);
         const financeAfter = await getFinanceOverview(target.db, actor, reviewMonth);
         if (
@@ -65,6 +66,21 @@ try {
           target: 'ephemeral-local-postgres16',
         };
       });
+      const { sha256: _legacyHash, ...legacy } = parseWorkspaceBackup(text);
+      void _legacyHash;
+      delete legacy.tables.financeComments;
+      for (const account of legacy.tables.financeAccounts ?? []) delete account.description;
+      for (const budget of legacy.tables.financeBudgets ?? []) delete budget.description;
+      legacy.tables.links = legacy.tables.links.filter(
+        (link) =>
+          !['activity', 'place'].includes(link.sourceType) &&
+          !['activity', 'place'].includes(link.targetType),
+      );
+      const legacyText = JSON.stringify(sealWorkspaceBackup({ ...legacy, version: 4 }));
+      const legacyResult = await withIsolatedDb((target) =>
+        restoreBackupForVerification(target.db, legacyText),
+      );
+      return { ...current, legacyV4Verified: legacyResult.verified };
     });
     console.log(JSON.stringify(report, null, 2));
   } else {

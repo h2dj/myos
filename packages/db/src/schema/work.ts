@@ -176,7 +176,14 @@ export const inboxItems = pgTable(
 
 // ── 태그 / 연결 ───────────────────────────────────────────
 
-export const entityType = pgEnum('entity_type', ['task', 'project', 'note', 'event']);
+export const entityType = pgEnum('entity_type', [
+  'task',
+  'project',
+  'note',
+  'event',
+  'activity',
+  'place',
+]);
 
 export const tags = pgTable(
   'tags',

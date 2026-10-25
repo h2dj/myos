@@ -12,18 +12,29 @@ import { ProjectForm } from './project-form';
 export function NewProjectButton({
   timeZone,
   projects = [],
+  defaultParentId,
 }: {
   timeZone: string;
+  defaultParentId?: string;
   projects?: Project[];
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button onClick={() => setOpen(true)}>
-        <Plus className="size-4" /> 프로젝트 추가
+        <Plus className="size-4" /> {defaultParentId ? '하위 프로젝트 추가' : '프로젝트 추가'}
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="프로젝트 추가">
-        <ProjectForm projects={projects} timeZone={timeZone} onDone={() => setOpen(false)} />
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={defaultParentId ? '하위 프로젝트 추가' : '프로젝트 추가'}
+      >
+        <ProjectForm
+          defaultParentId={defaultParentId}
+          projects={projects}
+          timeZone={timeZone}
+          onDone={() => setOpen(false)}
+        />
       </Dialog>
     </>
   );

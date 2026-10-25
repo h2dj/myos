@@ -235,7 +235,7 @@ describe('개인 재정 관리', () => {
     await archiveFinanceAccount(db, user.actor, account.id, true);
     await saveFinanceBudget(db, user.actor, { month: '2026-01', category: '식비', amount: '1000' });
     const backup = await exportWorkspaceBackup(db, user.actor, user.workspaceId);
-    expect(backup.version).toBe(4);
+    expect(backup.version).toBe(5);
     expect(parseWorkspaceBackup(JSON.stringify(backup))).toEqual(backup);
     expect(backup.tables.financeAccounts![0]).toMatchObject({ openingBalance: '-10000' });
     expect(backup.tables.financeAccounts![0]!.archivedAt).not.toBeNull();
@@ -249,6 +249,7 @@ describe('개인 재정 관리', () => {
     foreign.tables.financeAccounts![0]!.userId = randomUUID();
     expect(() => sealWorkspaceBackup(foreign)).toThrow('소유자');
     const legacy = structuredClone(payload);
+    delete legacy.tables.financeComments;
     delete legacy.tables.financeAccounts;
     delete legacy.tables.financeEntries;
     delete legacy.tables.financeBudgets;

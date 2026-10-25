@@ -13,3 +13,4 @@ export * from './notion-fields';
 export * from './calendar';
 export * from './life-balance';
 export * from './finance';
+export * from './relations';
