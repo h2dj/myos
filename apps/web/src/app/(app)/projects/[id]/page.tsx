@@ -2,7 +2,6 @@ import { formatLocalDay, getPeriodRange, projectPath } from '@myos/core';
 import {
   NotFoundError,
   getProject,
-  listNotes,
   listProjects,
   listTasks,
   listActivities,
@@ -12,7 +11,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
-import { EditProjectButtons } from '@/components/projects/project-dialogs';
+import { RelatedItemsPanel } from '@/components/relations/related-items-panel';
+import { EditProjectButtons, NewProjectButton } from '@/components/projects/project-dialogs';
 import { PROJECT_STATUS_LABEL } from '@/lib/labels';
 import { TaskView } from '@/components/tasks/task-view';
 import { ProgressBar } from '@/components/ui/badges';
@@ -29,13 +29,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     throw e;
   });
   const now = new Date();
-  const [tasks, notes, projects, activities, activityPlaces] = await Promise.all([
+  const [tasks, projects, activities, activityPlaces] = await Promise.all([
     listTasks(db, actor, {
       workspaceId: project.workspaceId,
       projectId: id,
       completedSince: getPeriodRange('week', now, user.timezone).start!,
     }),
-    listNotes(db, actor, { workspaceId: project.workspaceId, projectId: id, limit: 20 }),
     listProjects(db, actor, { workspaceId: project.workspaceId }),
     listActivities(db, actor, project.workspaceId),
     listActivityPlaces(db, actor, project.workspaceId),
@@ -86,7 +85,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </p>
       )}
       <section className="mb-6" aria-label="하위 프로젝트">
-        <h2 className="mb-2 font-semibold">하위 프로젝트</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">하위 프로젝트</h2>
+          <NewProjectButton
+            defaultParentId={project.id}
+            projects={projects}
+            timeZone={user.timezone}
+          />
+        </div>
         <p className="mb-2 text-xs text-muted">
           진행률과 아래 할 일 목록은 이 프로젝트에 직접 연결된 항목 기준입니다.
         </p>
@@ -123,23 +129,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         fixedProjectId={id}
       />
 
-      <h2 className="mt-8 mb-3 font-semibold">관련 노트</h2>
-      {notes.length === 0 ? (
-        <p className="text-sm text-muted">연결된 노트가 없습니다.</p>
-      ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
-          {notes.map((n) => (
-            <li key={n.id}>
-              <Link
-                href={`/knowledge/${n.id}`}
-                className="block px-4 py-3 text-sm hover:bg-surface-muted"
-              >
-                {n.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="mt-8">
+        <RelatedItemsPanel source={{ type: 'project', id }} />
+      </div>
     </>
   );
 }

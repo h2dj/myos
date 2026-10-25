@@ -219,3 +219,14 @@ async function loadPlace(db: Executor, id: string) {
   if (!row) throw new NotFoundError('활동처');
   return row;
 }
+
+export async function getActivity(db: Executor, actor: Actor, id: string) {
+  const row = await loadActivity(db, id);
+  await requireAccess(db, actor, row.workspaceId, 'read');
+  return row;
+}
+export async function getActivityPlace(db: Executor, actor: Actor, id: string) {
+  const row = await loadPlace(db, id);
+  await requireAccess(db, actor, row.workspaceId, 'read');
+  return row;
+}

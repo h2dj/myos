@@ -4,6 +4,8 @@ import { schema, type Db } from '@myos/db';
 import {
   ensureUserProfile,
   saveLifeBalance,
+  addRelatedItem,
+  saveFinanceComment,
   saveFinanceAccount,
   saveFinanceEntry,
   saveFinanceBudget,
@@ -122,11 +124,13 @@ export async function seedRehearsal(db: Db) {
   );
   const bank = await saveFinanceAccount(db, actor, {
     name: '검증 은행',
+    description: '생활비 자동이체용',
     kind: 'bank',
     openingBalance: '100000',
   });
   const credit = await saveFinanceAccount(db, actor, {
     name: '검증 카드',
+    description: '월간 결제용',
     kind: 'credit',
     openingBalance: '-10000',
   });
@@ -154,10 +158,45 @@ export async function seedRehearsal(db: Db) {
   );
   const removed = await saveFinanceEntry(db, actor, payment, randomUUID());
   await setFinanceEntryDeleted(db, actor, removed.id, true);
-  await saveFinanceBudget(db, actor, {
+  const budget = await saveFinanceBudget(db, actor, {
     month: reviewDay.slice(0, 7),
     category: '식비',
     amount: '20000',
+    description: '외식 포함 예산',
   });
+  await saveFinanceComment(
+    db,
+    actor,
+    { kind: 'account', id: bank.id },
+    { body: '계좌 보충 메모' },
+    randomUUID(),
+  );
+  await saveFinanceComment(
+    db,
+    actor,
+    { kind: 'budget', id: budget.id },
+    { body: '예산 보충 메모' },
+    randomUUID(),
+  );
+  const relatedTask = await createTask(db, actor, { workspaceId, title: '연결 검증용 할 일' });
+  const relatedActivity = await createActivity(db, actor, { workspaceId, name: '연관 활동' });
+  await addRelatedItem(
+    db,
+    actor,
+    { type: 'activity', id: activity.id },
+    { type: 'activity', id: relatedActivity.id },
+  );
+  await addRelatedItem(
+    db,
+    actor,
+    { type: 'activity', id: activity.id },
+    { type: 'project', id: parent.id },
+  );
+  for (const target of [
+    { type: 'activity', id: activity.id },
+    { type: 'place', id: place.id },
+    { type: 'task', id: relatedTask.id },
+  ])
+    await addRelatedItem(db, actor, { type: 'note', id: note!.id }, target);
   return { actor, workspaceId, projectId: child.id };
 }

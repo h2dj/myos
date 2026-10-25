@@ -19,20 +19,28 @@ import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
 import { Input } from '../ui/field';
 import { FormMessage } from '../ui/form-message';
+import { FinanceCommentsPanel } from './finance-comments-panel';
 import { AccountForm, BudgetForm, EntryForm } from './finance-forms';
 import type { FinanceAccount, FinanceBudget, FinanceEntry, FinanceOverview } from './types';
 
 export function FinanceView({
   overview: data,
   today,
+  timeZone,
 }: {
   overview: FinanceOverview;
   today: string;
+  timeZone: string;
 }) {
   const router = useRouter();
   const [accountEdit, setAccountEdit] = useState<FinanceAccount | 'new' | null>(null);
   const [entryEdit, setEntryEdit] = useState<FinanceEntry | 'new' | null>(null);
   const [budgetEdit, setBudgetEdit] = useState<FinanceBudget | 'new' | null>(null);
+  const [annotation, setAnnotation] = useState<{
+    kind: 'account' | 'budget';
+    id: string;
+    title: string;
+  } | null>(null);
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
   const name = (id: string | null) =>
@@ -121,6 +129,20 @@ export function FinanceView({
               </h3>
               <p className="text-xs text-muted">{FINANCE_ACCOUNT_LABELS[account.kind]}</p>
               <p className="break-all font-semibold">{formatWon(account.balance)}</p>
+              {account.description && (
+                <p className="whitespace-pre-wrap break-words text-sm text-muted">
+                  {account.description}
+                </p>
+              )}
+              <Button
+                variant="secondary"
+                aria-label={`${account.name} 추가 메모`}
+                onClick={() =>
+                  setAnnotation({ kind: 'account', id: account.id, title: account.name })
+                }
+              >
+                추가 메모
+              </Button>
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="ghost"
@@ -204,6 +226,24 @@ export function FinanceView({
                   ? `${formatWon((-BigInt(budget.remaining)).toString())} 초과`
                   : `${formatWon(budget.remaining)} 남음`}
               </p>
+              {budget.description && (
+                <p className="whitespace-pre-wrap break-words text-sm text-muted">
+                  {budget.description}
+                </p>
+              )}
+              <Button
+                variant="secondary"
+                aria-label={`${budget.category} 예산 추가 메모`}
+                onClick={() =>
+                  setAnnotation({
+                    kind: 'budget',
+                    id: budget.id,
+                    title: `${budget.month.slice(0, 7)} ${budget.category} 예산`,
+                  })
+                }
+              >
+                추가 메모
+              </Button>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
@@ -216,7 +256,7 @@ export function FinanceView({
                   variant="ghost"
                   disabled={pending}
                   onClick={() => {
-                    if (window.confirm('이 예산을 삭제할까요?'))
+                    if (window.confirm('이 예산과 추가 메모를 삭제할까요?'))
                       run(() => deleteFinanceBudgetAction(budget.id));
                   }}
                   aria-label={`${budget.category} 예산 삭제`}
@@ -336,6 +376,19 @@ export function FinanceView({
           )}
         </nav>
       </section>
+      <Dialog
+        open={annotation !== null}
+        onClose={() => setAnnotation(null)}
+        title={annotation ? `${annotation.title} 추가 메모` : '추가 메모'}
+      >
+        {annotation && (
+          <FinanceCommentsPanel
+            key={`${annotation.kind}:${annotation.id}`}
+            target={{ kind: annotation.kind, id: annotation.id }}
+            timeZone={timeZone}
+          />
+        )}
+      </Dialog>
       <Dialog
         open={accountEdit !== null}
         onClose={() => setAccountEdit(null)}

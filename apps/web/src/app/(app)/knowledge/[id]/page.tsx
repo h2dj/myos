@@ -1,6 +1,7 @@
 import { NotFoundError, getNote, listProjects } from '@myos/domain';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { RelatedItemsPanel } from '@/components/relations/related-items-panel';
 import { NoteEditor } from '@/components/knowledge/note-editor';
 import { requireSession } from '@/server/auth/session';
 import { db } from '@/server/db';
@@ -17,10 +18,18 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   });
   const projects = await listProjects(db, actor, { workspaceId: note.workspaceId });
   return (
-    <NoteEditor
-      key={note.updatedAt.toISOString()}
-      note={note}
-      projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-    />
+    <div className="space-y-6">
+      <NoteEditor
+        key={note.updatedAt.toISOString()}
+        note={note}
+        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+      />
+      {!note.deletedAt && (
+        <RelatedItemsPanel
+          key={`links:${note.updatedAt.toISOString()}`}
+          source={{ type: 'note', id }}
+        />
+      )}
+    </div>
   );
 }

@@ -270,11 +270,12 @@ describe('Notion sample import', () => {
     });
     expect(taskRef.raw).toEqual(raw);
     const backup = await exportWorkspaceBackup(db, user.actor, user.workspaceId);
-    expect(backup.version).toBe(4);
+    expect(backup.version).toBe(5);
     expect(backup.tables.externalRefs).toHaveLength(5);
     expect(parseWorkspaceBackup(JSON.stringify(backup))).toEqual(backup);
     const { sha256: _hash, ...legacy } = backup;
     void _hash;
+    delete legacy.tables.financeComments;
     delete legacy.tables.financeAccounts;
     delete legacy.tables.financeEntries;
     delete legacy.tables.financeBudgets;

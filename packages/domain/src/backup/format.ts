@@ -27,6 +27,20 @@ const rule = z.discriminatedUnion('freq', [
 ]);
 const tablesSchema = z
   .object({
+    financeComments: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            ...timestamps,
+            accountId: nullableId,
+            budgetId: nullableId,
+            body: z.string().min(1).max(3000),
+          })
+          .strict(),
+      )
+      .optional(),
     financeAccounts: z
       .array(
         z
@@ -35,6 +49,7 @@ const tablesSchema = z
             userId: uuid,
             ...timestamps,
             name: z.string().min(1).max(100),
+            description: z.string().max(5000).optional(),
             kind: z.enum(schema.financeAccounts.kind.enumValues),
             openingBalance: z.string().regex(/^-?(0|[1-9]\d{0,17})$/),
             archivedAt: nullableDate,
@@ -69,6 +84,7 @@ const tablesSchema = z
             userId: uuid,
             ...timestamps,
             month: day.refine((value) => value.endsWith('-01')),
+            description: z.string().max(5000).optional(),
             category: z.string().min(1).max(50),
             amount: z.string().regex(/^(0|[1-9]\d{0,17})$/),
           })
@@ -266,7 +282,7 @@ const tablesSchema = z
 const payloadSchema = z
   .object({
     format: z.literal('myos-workspace'),
-    version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
     exportedAt: date,
     workspace: z
       .object({
@@ -285,6 +301,7 @@ export type BackupPayload = z.infer<typeof payloadSchema>;
 export type BackupTables = BackupPayload['tables'];
 export type WorkspaceBackup = BackupPayload & { sha256: string };
 export const BACKUP_TABLES = [
+  'financeComments',
   'financeAccounts',
   'financeEntries',
   'financeBudgets',
@@ -321,9 +338,15 @@ export function backupTableSummary(tables: BackupTables) {
       {
         count: (tables[key] ?? []).length,
         sha256: hash(
-          [...(tables[key] ?? [])].sort((a, b) =>
-            canonical(a) < canonical(b) ? -1 : canonical(a) > canonical(b) ? 1 : 0,
-          ),
+          [...(tables[key] ?? [])]
+            .map((row) =>
+              key === 'financeAccounts' || key === 'financeBudgets'
+                ? { ...row, description: (row as { description?: string }).description ?? '' }
+                : row,
+            )
+            .sort((a, b) =>
+              canonical(a) < canonical(b) ? -1 : canonical(a) > canonical(b) ? 1 : 0,
+            ),
         ),
       },
     ]),
@@ -341,18 +364,31 @@ function validateRelations(backup: BackupPayload) {
       (t.financeAccounts !== undefined ||
         t.financeEntries !== undefined ||
         t.financeBudgets !== undefined)) ||
-    (backup.version === 4 &&
+    (backup.version >= 4 &&
       (t.financeAccounts === undefined ||
         t.financeEntries === undefined ||
         t.financeBudgets === undefined))
   )
     throw new ValidationError('백업 버전과 가져오기 이력 형식이 일치하지 않습니다.');
+  if (
+    (backup.version < 5 && t.financeComments !== undefined) ||
+    (backup.version === 5 && t.financeComments === undefined)
+  )
+    throw new ValidationError('백업 버전과 추가 메모 형식이 일치하지 않습니다.');
+  if (
+    backup.version >= 5 &&
+    [...(t.financeAccounts ?? []), ...(t.financeBudgets ?? [])].some(
+      (row) => row.description === undefined,
+    )
+  )
+    throw new ValidationError('재정 설명이 누락되어 있습니다.');
   for (const review of t.lifeReviews ?? []) {
     if (workspace.type !== 'personal' || review.userId !== workspace.ownerId)
       throw new ValidationError('개인 회고의 소유자 정보가 올바르지 않습니다.');
   }
   for (const row of [
     ...(t.financeAccounts ?? []),
+    ...(t.financeComments ?? []),
     ...(t.financeEntries ?? []),
     ...(t.financeBudgets ?? []),
   ]) {
@@ -388,6 +424,8 @@ function validateRelations(backup: BackupPayload) {
     task: ids(t.tasks),
     project: projects,
     note: ids(t.notes),
+    activity: activities,
+    place: places,
     event: new Set<string>(),
   };
   const ref = (id: string | null, set: Set<string>) => {
@@ -403,6 +441,13 @@ function validateRelations(backup: BackupPayload) {
         : entry.targetAccountId !== null
     )
       throw new ValidationError('재정 거래의 계좌 연결이 올바르지 않습니다.');
+  }
+  const financialBudgets = ids(t.financeBudgets ?? []);
+  for (const comment of t.financeComments ?? []) {
+    if ((comment.accountId === null) === (comment.budgetId === null))
+      throw new ValidationError('추가 메모 대상은 하나여야 합니다.');
+    ref(comment.accountId, financialAccounts);
+    ref(comment.budgetId, financialBudgets);
   }
   const budgetKeys = new Set<string>();
   for (const budget of t.financeBudgets ?? []) {

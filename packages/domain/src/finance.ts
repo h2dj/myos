@@ -33,6 +33,7 @@ const accountInput = z
     name: z.string().trim().min(1).max(100),
     kind: z.enum(accounts.kind.enumValues),
     openingBalance: signed,
+    description: z.string().trim().max(5000).optional(),
   })
   .strict();
 const entryInput = z
@@ -61,7 +62,12 @@ const entryInput = z
       ctx.addIssue({ code: 'custom', message: '거래일 범위가 올바르지 않습니다.' });
   });
 const budgetInput = z
-  .object({ month: monthSchema, category: z.string().trim().min(1).max(50), amount: unsigned })
+  .object({
+    month: monthSchema,
+    category: z.string().trim().min(1).max(50),
+    amount: unsigned,
+    description: z.string().trim().max(5000).optional(),
+  })
   .strict();
 
 async function personalFinance(db: Executor, actor: Actor, write = false) {
@@ -221,7 +227,7 @@ export async function saveFinanceBudget(db: Db, actor: Actor, raw: unknown) {
       .values({ ...input, month: `${input.month}-01`, workspaceId, userId: actor.userId })
       .onConflictDoUpdate({
         target: [budgets.userId, budgets.workspaceId, budgets.month, budgets.category],
-        set: { amount: input.amount, updatedAt: new Date() },
+        set: { amount: input.amount, description: input.description, updatedAt: new Date() },
       })
       .returning();
     await audit(tx, actor, workspaceId, 'finance.budget.save', saved!.id);
@@ -334,4 +340,127 @@ export async function getFinanceOverview(
     },
     { isolationLevel: 'repeatable read', accessMode: 'read only' },
   );
+}
+
+const financeCommentTarget = z
+  .object({ kind: z.enum(['account', 'budget']), id: z.uuid() })
+  .strict();
+async function financeAnnotationTarget(
+  db: Executor,
+  actor: Actor,
+  workspaceId: string,
+  raw: unknown,
+) {
+  const target = parse(financeCommentTarget, raw);
+  const table = target.kind === 'account' ? accounts : budgets;
+  const [row] = await db
+    .select({ id: table.id, description: table.description })
+    .from(table)
+    .where(and(owned(table, actor, workspaceId), eq(table.id, target.id)));
+  if (!row) throw new NotFoundError('계좌·예산');
+  return { ...target, description: row.description };
+}
+const commentTargetWhere = (target: { kind: 'account' | 'budget'; id: string }) =>
+  target.kind === 'account'
+    ? eq(schema.financeComments.accountId, target.id)
+    : eq(schema.financeComments.budgetId, target.id);
+export async function getFinanceComments(db: Db, actor: Actor, raw: unknown, page = 1) {
+  parse(z.number().int().min(1).max(100000), page);
+  return db.transaction(
+    async (tx) => {
+      const workspaceId = await personalFinance(tx, actor);
+      const target = await financeAnnotationTarget(tx, actor, workspaceId, raw);
+      const where = and(
+        eq(schema.financeComments.userId, actor.userId),
+        eq(schema.financeComments.workspaceId, workspaceId),
+        commentTargetWhere(target),
+      );
+      const [total] = await tx.select({ count: count() }).from(schema.financeComments).where(where);
+      const pages = Math.max(1, Math.ceil(total!.count / 50));
+      const selectedPage = Math.min(page, pages);
+      const comments = await tx
+        .select()
+        .from(schema.financeComments)
+        .where(where)
+        .orderBy(desc(schema.financeComments.createdAt), desc(schema.financeComments.id))
+        .limit(50)
+        .offset((selectedPage - 1) * 50);
+      return {
+        description: target.description,
+        comments,
+        total: total!.count,
+        page: selectedPage,
+        pages,
+      };
+    },
+    { isolationLevel: 'repeatable read', accessMode: 'read only' },
+  );
+}
+export async function saveFinanceComment(
+  db: Db,
+  actor: Actor,
+  targetRaw: unknown,
+  raw: unknown,
+  id: string,
+  editing = false,
+) {
+  const input = parse(
+    z.object({ body: z.string().trim().min(1, '메모 내용을 입력하세요.').max(3000) }).strict(),
+    raw,
+  );
+  if (!isUuid(id)) throw new NotFoundError('추가 메모');
+  return db.transaction(async (tx) => {
+    const workspaceId = await personalFinance(tx, actor, true);
+    const target = await financeAnnotationTarget(tx, actor, workspaceId, targetRaw);
+    const where = and(
+      eq(schema.financeComments.id, id),
+      eq(schema.financeComments.userId, actor.userId),
+      eq(schema.financeComments.workspaceId, workspaceId),
+      commentTargetWhere(target),
+    );
+    const [current] = await tx.select().from(schema.financeComments).where(where);
+    if (!editing && current) return current;
+    if (editing && !current) throw new NotFoundError('추가 메모');
+    const [saved] = editing
+      ? await tx.update(schema.financeComments).set(input).where(where).returning()
+      : await tx
+          .insert(schema.financeComments)
+          .values({
+            ...input,
+            id,
+            workspaceId,
+            userId: actor.userId,
+            accountId: target.kind === 'account' ? target.id : null,
+            budgetId: target.kind === 'budget' ? target.id : null,
+          })
+          .returning();
+    await audit(
+      tx,
+      actor,
+      workspaceId,
+      editing ? 'finance.comment.update' : 'finance.comment.create',
+      id,
+    );
+    return saved!;
+  });
+}
+export async function deleteFinanceComment(db: Db, actor: Actor, targetRaw: unknown, id: string) {
+  if (!isUuid(id)) throw new NotFoundError('추가 메모');
+  return db.transaction(async (tx) => {
+    const workspaceId = await personalFinance(tx, actor, true);
+    const target = await financeAnnotationTarget(tx, actor, workspaceId, targetRaw);
+    const [row] = await tx
+      .delete(schema.financeComments)
+      .where(
+        and(
+          eq(schema.financeComments.id, id),
+          eq(schema.financeComments.userId, actor.userId),
+          eq(schema.financeComments.workspaceId, workspaceId),
+          commentTargetWhere(target),
+        ),
+      )
+      .returning({ id: schema.financeComments.id });
+    if (!row) throw new NotFoundError('추가 메모');
+    await audit(tx, actor, workspaceId, 'finance.comment.delete', id);
+  });
 }

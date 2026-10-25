@@ -1,5 +1,6 @@
 'use client';
 
+import { RelatedItemsPanel } from '../relations/related-items-panel';
 import { TaskCalendar } from './task-calendar';
 import { TASK_STATUS_LABEL } from '@/lib/labels';
 import {
@@ -207,6 +208,9 @@ export function TaskView({
               timeZone={timeZone}
               onDone={() => setEditing(null)}
             />
+            <div className="mt-4">
+              <RelatedItemsPanel key={editing.id} source={{ type: 'task', id: editing.id }} />
+            </div>
             <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
               <DeleteTaskButton taskId={editing.id} onDeleted={() => setEditing(null)} />
               {editing.seriesId && (

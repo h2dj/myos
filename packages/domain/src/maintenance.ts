@@ -23,6 +23,8 @@ export async function purgeExpired(db: Executor, now = new Date()) {
       ['tasks', schema.tasks, 'task'],
       ['notes', schema.notes, 'note'],
       ['projects', schema.projects, 'project'],
+      ['activities', schema.activities, 'activity'],
+      ['activityPlaces', schema.activityPlaces, 'place'],
     ] as const) {
       const rows = await tx
         .delete(table)
@@ -47,17 +49,6 @@ export async function purgeExpired(db: Executor, now = new Date()) {
       }
     }
 
-    for (const [name, table] of [
-      ['activities', schema.activities],
-      ['activityPlaces', schema.activityPlaces],
-    ] as const) {
-      purged[name] = (
-        await tx
-          .delete(table)
-          .where(and(isNotNull(table.deletedAt), lt(table.deletedAt, trashCutoff)))
-          .returning({ id: table.id })
-      ).length;
-    }
     purged.automationRuns = (
       await tx
         .delete(schema.automationRuns)
