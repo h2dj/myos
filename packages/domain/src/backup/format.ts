@@ -1,3 +1,4 @@
+import { financePlanOccurrences } from '@myos/core';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { schema } from '@myos/db';
@@ -27,6 +28,43 @@ const rule = z.discriminatedUnion('freq', [
 ]);
 const tablesSchema = z
   .object({
+    financePlans: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            ...timestamps,
+            title: z.string().min(1).max(200),
+            accountId: uuid,
+            targetAccountId: nullableId,
+            kind: z.enum(schema.financePlans.kind.enumValues),
+            amount: z.string().regex(/^[1-9]\d{0,17}$/),
+            frequency: z.enum(schema.financePlans.frequency.enumValues),
+            startOn: day,
+            endOn: day.nullable(),
+            category: z.string().min(1).max(50),
+            note: z.string().max(1000),
+            pausedAt: nullableDate,
+          })
+          .strict(),
+      )
+      .optional(),
+    financePlanOutcomes: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            ...timestamps,
+            planId: uuid,
+            occurrenceOn: day,
+            status: z.enum(['posted', 'skipped']),
+            entryId: nullableId,
+          })
+          .strict(),
+      )
+      .optional(),
     financeComments: z
       .array(
         z
@@ -282,7 +320,14 @@ const tablesSchema = z
 const payloadSchema = z
   .object({
     format: z.literal('myos-workspace'),
-    version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+    version: z.union([
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+      z.literal(4),
+      z.literal(5),
+      z.literal(6),
+    ]),
     exportedAt: date,
     workspace: z
       .object({
@@ -301,6 +346,8 @@ export type BackupPayload = z.infer<typeof payloadSchema>;
 export type BackupTables = BackupPayload['tables'];
 export type WorkspaceBackup = BackupPayload & { sha256: string };
 export const BACKUP_TABLES = [
+  'financePlans',
+  'financePlanOutcomes',
   'financeComments',
   'financeAccounts',
   'financeEntries',
@@ -372,7 +419,7 @@ function validateRelations(backup: BackupPayload) {
     throw new ValidationError('백업 버전과 가져오기 이력 형식이 일치하지 않습니다.');
   if (
     (backup.version < 5 && t.financeComments !== undefined) ||
-    (backup.version === 5 && t.financeComments === undefined)
+    (backup.version >= 5 && t.financeComments === undefined)
   )
     throw new ValidationError('백업 버전과 추가 메모 형식이 일치하지 않습니다.');
   if (
@@ -382,12 +429,19 @@ function validateRelations(backup: BackupPayload) {
     )
   )
     throw new ValidationError('재정 설명이 누락되어 있습니다.');
+  if (
+    (backup.version < 6 && (t.financePlans !== undefined || t.financePlanOutcomes !== undefined)) ||
+    (backup.version === 6 && (t.financePlans === undefined || t.financePlanOutcomes === undefined))
+  )
+    throw new ValidationError('백업 버전과 예정 형식이 일치하지 않습니다.');
   for (const review of t.lifeReviews ?? []) {
     if (workspace.type !== 'personal' || review.userId !== workspace.ownerId)
       throw new ValidationError('개인 회고의 소유자 정보가 올바르지 않습니다.');
   }
   for (const row of [
     ...(t.financeAccounts ?? []),
+    ...(t.financePlans ?? []),
+    ...(t.financePlanOutcomes ?? []),
     ...(t.financeComments ?? []),
     ...(t.financeEntries ?? []),
     ...(t.financeBudgets ?? []),
@@ -441,6 +495,41 @@ function validateRelations(backup: BackupPayload) {
         : entry.targetAccountId !== null
     )
       throw new ValidationError('재정 거래의 계좌 연결이 올바르지 않습니다.');
+  }
+  const planMap = new Map((t.financePlans ?? []).map((p) => [p.id, p]));
+  const entryIds = ids(t.financeEntries ?? []);
+  const occurrenceKeys = new Set<string>();
+  const postedEntries = new Set<string>();
+  for (const plan of t.financePlans ?? []) {
+    ref(plan.accountId, financialAccounts);
+    ref(plan.targetAccountId, financialAccounts);
+    if (
+      (plan.endOn && plan.endOn < plan.startOn) ||
+      (plan.kind === 'transfer'
+        ? !plan.targetAccountId || plan.targetAccountId === plan.accountId
+        : plan.targetAccountId !== null)
+    )
+      throw new ValidationError('예정 규칙의 날짜·계좌 연결이 올바르지 않습니다.');
+  }
+  for (const outcome of t.financePlanOutcomes ?? []) {
+    const plan = planMap.get(outcome.planId);
+    const key = `${outcome.planId}:${outcome.occurrenceOn}`;
+    if (
+      !plan ||
+      !financePlanOccurrences({ ...plan, endOn: null }, outcome.occurrenceOn, outcome.occurrenceOn)
+        .length ||
+      occurrenceKeys.has(key)
+    )
+      throw new ValidationError('예정 회차가 중복되거나 올바르지 않습니다.');
+    occurrenceKeys.add(key);
+    ref(outcome.entryId, entryIds);
+    if (outcome.status === 'posted' && !outcome.entryId)
+      throw new ValidationError('확정 거래가 누락되어 있습니다.');
+    if (outcome.entryId) {
+      if (postedEntries.has(outcome.entryId))
+        throw new ValidationError('확정 거래가 중복 연결되어 있습니다.');
+      postedEntries.add(outcome.entryId);
+    }
   }
   const financialBudgets = ids(t.financeBudgets ?? []);
   for (const comment of t.financeComments ?? []) {

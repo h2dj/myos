@@ -70,6 +70,16 @@ export async function restoreBackupForVerification(db: Db, text: string) {
         .insert(schema.financeBudgets)
         .values(rows.map((row) => revive(row) as typeof schema.financeBudgets.$inferInsert)),
     );
+    await batch(t.financePlans ?? [], (rows) =>
+      tx
+        .insert(schema.financePlans)
+        .values(rows.map((row) => revive(row) as typeof schema.financePlans.$inferInsert)),
+    );
+    await batch(t.financePlanOutcomes ?? [], (rows) =>
+      tx
+        .insert(schema.financePlanOutcomes)
+        .values(rows.map((row) => revive(row) as typeof schema.financePlanOutcomes.$inferInsert)),
+    );
     await batch(t.financeComments ?? [], (rows) =>
       tx
         .insert(schema.financeComments)

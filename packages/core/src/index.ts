@@ -14,3 +14,4 @@ export * from './calendar';
 export * from './life-balance';
 export * from './finance';
 export * from './relations';
+export * from './finance-planning';

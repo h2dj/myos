@@ -59,6 +59,12 @@ export function FinanceView({
       <p className="text-sm text-muted">
         개인 전용 · KRW 원화 · 수동 기록. 은행 연결 없이 계좌와 거래를 직접 입력합니다.
       </p>
+      <Link
+        href="/finance/planning"
+        className="inline-block rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium"
+      >
+        고정 지출·예정 수입·수지 예측 →
+      </Link>
       <nav aria-label="재정 월 탐색" className="flex flex-wrap items-center gap-3 text-sm">
         {data.month > '1900-01' && (
           <Link href={href(shiftFinanceMonth(data.month, -1))}>← 이전 달</Link>

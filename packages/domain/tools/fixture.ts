@@ -7,6 +7,9 @@ import {
   addRelatedItem,
   saveFinanceComment,
   saveFinanceAccount,
+  saveFinancePlan,
+  postFinancePlan,
+  skipFinancePlan,
   saveFinanceEntry,
   saveFinanceBudget,
   setFinanceEntryDeleted,
@@ -158,6 +161,30 @@ export async function seedRehearsal(db: Db) {
   );
   const removed = await saveFinanceEntry(db, actor, payment, randomUUID());
   await setFinanceEntryDeleted(db, actor, removed.id, true);
+  const planned = {
+    title: '고정 지출 검증',
+    kind: 'expense',
+    accountId: bank.id,
+    targetAccountId: null,
+    amount: '1000',
+    frequency: 'monthly',
+    startOn: reviewDay,
+    endOn: null,
+    category: '고정',
+    note: '정기 결제',
+  };
+  const postedPlan = await saveFinancePlan(db, actor, planned, randomUUID());
+  await postFinancePlan(db, actor, postedPlan.id, reviewDay, {
+    amount: '900',
+    occurredOn: reviewDay,
+  });
+  const skippedPlan = await saveFinancePlan(
+    db,
+    actor,
+    { ...planned, frequency: 'quarterly' },
+    randomUUID(),
+  );
+  await skipFinancePlan(db, actor, skippedPlan.id, reviewDay, true);
   const budget = await saveFinanceBudget(db, actor, {
     month: reviewDay.slice(0, 7),
     category: '식비',
