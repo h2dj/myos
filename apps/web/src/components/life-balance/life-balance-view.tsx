@@ -358,7 +358,7 @@ export function LifeBalanceView({
             </p>
             {preview.evidence.length === 0 && (
               <p className="mt-2 text-sm">
-                이 기간의 완료 기록이 없습니다. 기록 기준 활동 점수는 0점입니다.
+                이 기간의 완료 기록이 없습니다. 자기평가만으로 점수를 계산합니다.
               </p>
             )}
             <ul className="mt-3 divide-y divide-border">
@@ -502,8 +502,14 @@ function ScoreResult({
           <div key={label} className="rounded-lg bg-surface-muted p-3">
             <p className="text-xs text-muted">{label}</p>
             <p className="text-xl font-semibold">
-              {score.toFixed(1)}
-              <span className="text-xs text-muted"> / 10</span>
+              {score === null ? (
+                <span className="text-sm">기록 없음</span>
+              ) : (
+                <>
+                  {score.toFixed(1)}
+                  <span className="text-xs text-muted"> / 10</span>
+                </>
+              )}
             </p>
           </div>
         ))}
@@ -511,7 +517,8 @@ function ScoreResult({
       <p className="text-sm text-muted">
         활동 점수 = min(완료 건수 ÷ 나의 목표, 1) × 10. 영역별 합산 = 자기평가 ×{' '}
         {snapshot.input.selfWeight}% + 활동 점수 × {100 - snapshot.input.selfWeight}%. 전체 점수는
-        영역별 평균입니다.
+        영역별 평균입니다. 활동 기록이 없는 영역은 비중 설정과 관계없이 자기평가를 100% 반영합니다.
+        활동 평균은 기록이 있는 영역만 포함합니다.
       </p>
       <p className="text-sm">
         완료 기록 {snapshot.totalCompleted}건 · 미분류 {snapshot.unclassified}건 (분류 충돌{' '}
@@ -540,6 +547,7 @@ function ScoreResult({
           ))}
         </ul>
       </details>
+      <p className="text-xs text-muted">활동 차트는 기록이 있는 영역만 표시합니다.</p>
       <Radar snapshot={snapshot} />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[500px] text-sm">
@@ -561,8 +569,13 @@ function ScoreResult({
                 <td>
                   {area.completed} / {area.target}
                 </td>
-                <td>{area.activityScore.toFixed(1)}</td>
-                <td className="font-semibold">{area.combined.toFixed(1)}</td>
+                <td>{area.activityScore === null ? '미반영' : area.activityScore.toFixed(1)}</td>
+                <td className="font-semibold">
+                  {area.combined.toFixed(1)}
+                  {area.activityScore === null && (
+                    <span className="block text-xs font-normal text-muted">자기평가만</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -574,7 +587,7 @@ function ScoreResult({
       </p>
       <p className="text-xs text-muted">
         활동량은 작업 크기·시간·질을 반영하지 않습니다. 이 합산 점수는 앱의 회고 지표이며
-        프레임워크의 공식 점수가 아닙니다. 기록이 없는 영역의 0점은 활동 기록 기준입니다.
+        프레임워크의 공식 점수가 아닙니다. 활동 기록이 없는 영역은 자기평가만 반영합니다.
       </p>
     </div>
   );
@@ -634,14 +647,29 @@ function Radar({ snapshot }: { snapshot: LifeBalanceSnapshot }) {
           );
         })}
         {showActivity && (
-          <polygon
-            points={polygon((i) => snapshot.areas[i]!.activityScore)}
-            fill="#059669"
-            fillOpacity={0.08}
-            stroke="#059669"
-            strokeWidth={2}
-            strokeDasharray="3 3"
-          />
+          <g>
+            {snapshot.areas.every((area) => area.activityScore !== null) && (
+              <polygon
+                points={polygon((i) => snapshot.areas[i]!.activityScore!)}
+                fill="#059669"
+                fillOpacity={0.08}
+                stroke="#059669"
+                strokeWidth={2}
+                strokeDasharray="3 3"
+              />
+            )}
+            {snapshot.areas.map((area, i) => {
+              if (area.activityScore === null) return null;
+              const p = point(i, area.activityScore);
+              return (
+                <circle key={area.id} cx={p[0]} cy={p[1]} r={4} fill="#059669">
+                  <title>
+                    {area.label} 활동 {area.activityScore.toFixed(1)}
+                  </title>
+                </circle>
+              );
+            })}
+          </g>
         )}
         {showSelf && (
           <polygon
@@ -667,7 +695,7 @@ function Radar({ snapshot }: { snapshot: LifeBalanceSnapshot }) {
         {(
           [
             ['자기평가 (긴 점선)', showSelf, setShowSelf],
-            ['활동 (짧은 점선)', showActivity, setShowActivity],
+            ['활동 (초록 점·점선)', showActivity, setShowActivity],
             ['합산 (실선)', showCombined, setShowCombined],
           ] as const
         ).map(([label, checked, set]) => (

@@ -20,6 +20,10 @@ test('삶의 균형: 완료 활동 연결·합산·저장·이력·PERMA', async
   const result = page.getByRole('region', { name: '현재 회고 결과' });
   await expect(result.getByRole('row', { name: /건강/ })).toContainText('1 / 4');
   await expect(result.getByRole('row', { name: /건강/ })).toContainText('2.5');
+  await expect(result.getByRole('row', { name: /일·경력/ })).toContainText('자기평가만');
+  await expect(
+    result.getByRole('row', { name: /일·경력/ }).getByRole('cell', { name: '6.0', exact: false }),
+  ).toHaveCount(2);
   await expect(result.getByRole('img', { name: /레이더 차트/ })).toBeVisible();
   await result.getByText(/집계 근거 확인/).click();
   await expect(result.getByRole('link', { name: '회고를 위한 산책' })).toBeVisible();
@@ -32,12 +36,19 @@ test('삶의 균형: 완료 활동 연결·합산·저장·이력·PERMA', async
   await expect(history.getByRole('row', { name: /건강/ })).toContainText('1 / 4');
   await page.getByLabel('프레임워크', { exact: true }).selectOption('perma');
   await expect(scores).toHaveCount(5);
-  for (const score of await scores.all()) await score.fill('0');
+  for (const score of await scores.all()) await score.fill('6');
   await page.getByRole('button', { name: '활동 불러오고 점수 계산' }).click();
-  await expect(result.getByRole('row', { name: /긍정정서/ })).toContainText('0.0');
+  await expect(result.getByRole('row', { name: /긍정정서/ })).toContainText('6.0');
   await expect(result).toContainText('미분류 1건');
   await page.getByLabel('자기평가 비중 (%)', { exact: true }).fill('100');
   await expect(result).toHaveCount(0);
+  await page.getByLabel('자기평가 비중 (%)', { exact: true }).fill('0');
+  await page.getByRole('button', { name: '활동 불러오고 점수 계산' }).click();
+  await expect(result).toContainText('기록 없음');
+  await expect(result.getByRole('row', { name: /긍정정서/ })).toContainText('자기평가만');
+  await expect(
+    result.getByRole('row', { name: /긍정정서/ }).getByRole('cell', { name: /6.0/ }),
+  ).toHaveCount(2);
   page.on('dialog', (dialog) => dialog.accept());
   await history.getByRole('button', { name: '이 회고 삭제' }).click();
   await expect(page.getByText('아직 저장한 회고가 없습니다.')).toBeVisible();

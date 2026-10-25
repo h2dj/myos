@@ -36,7 +36,7 @@ const tablesSchema = z
             createdAt: date,
             snapshot: z
               .object({
-                version: z.literal(1),
+                version: z.union([z.literal(1), z.literal(2)]),
                 input: lifeBalanceInputSchema,
                 timeZone: z.string().refine((tz) => {
                   try {
@@ -55,7 +55,7 @@ const tablesSchema = z
                         selfScore: z.number().min(0).max(10),
                         completed: z.number().int().min(0),
                         target: z.number().int().min(1),
-                        activityScore: z.number().min(0).max(10),
+                        activityScore: z.number().min(0).max(10).nullable(),
                         combined: z.number().min(0).max(10),
                       })
                       .strict(),
@@ -63,7 +63,7 @@ const tablesSchema = z
                   .min(1)
                   .max(8),
                 selfScore: z.number().min(0).max(10),
-                activityScore: z.number().min(0).max(10),
+                activityScore: z.number().min(0).max(10).nullable(),
                 combined: z.number().min(0).max(10),
                 totalCompleted: z.number().int().min(0),
                 unclassified: z.number().int().min(0),

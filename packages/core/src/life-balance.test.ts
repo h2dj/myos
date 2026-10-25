@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   LIFE_FRAMEWORKS,
+  normalizeLifeBalanceSnapshot,
   comparableLifeReviews,
   scoreLifeBalance,
   type LifeBalanceInput,
@@ -61,8 +62,31 @@ describe('삶의 균형 점수', () => {
       activityScore: 10,
       combined: 8.6,
     });
-    expect(result.areas[1]).toMatchObject({ activityScore: 0, combined: 5.6 });
-    expect(result.combined).toBe(6.2);
+    expect(result.areas[1]).toMatchObject({ activityScore: null, combined: 8 });
+    expect(result.combined).toBe(8.1);
+    expect(result.activityScore).toBe(10);
+  });
+  it('기록이 없거나 미분류·충돌뿐이면 비중 0%에서도 자기평가만 반영한다', () => {
+    const data = input();
+    data.selfWeight = 0;
+    for (const evidence of [[], [task(['unknown'])], [task(['positive', 'meaning'])]]) {
+      const result = scoreLifeBalance(data, evidence, 'UTC');
+      expect(result).toMatchObject({ version: 2, selfScore: 8, combined: 8, activityScore: null });
+      expect(
+        result.areas.every((a) => a.combined === a.selfScore && a.activityScore === null),
+      ).toBe(true);
+    }
+  });
+  it('과거 스냅샷은 저장된 건수로 새 규칙을 적용하되 원본을 수정하지 않는다', () => {
+    const legacy = scoreLifeBalance(input(), [task(['positive'])], 'UTC');
+    legacy.version = 1;
+    legacy.areas[1]!.activityScore = 0;
+    legacy.areas[1]!.combined = 5.6;
+    const normalized = normalizeLifeBalanceSnapshot(legacy);
+    expect(normalized.version).toBe(2);
+    expect(normalized.areas[1]).toMatchObject({ activityScore: null, combined: 8 });
+    expect(normalized.areas[0]).toMatchObject({ activityScore: 5, combined: 7.1 });
+    expect(legacy.areas[1]!.combined).toBe(5.6);
   });
   it('0점과 0/100% 비중도 의미 있게 처리한다', () => {
     const data = input();
