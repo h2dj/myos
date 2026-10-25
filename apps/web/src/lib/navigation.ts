@@ -1,5 +1,6 @@
 import {
   Bell,
+  Compass,
   CalendarDays,
   CheckSquare,
   FolderKanban,
@@ -25,6 +26,13 @@ export interface NavItem {
 }
 
 export const MAIN_NAV: NavItem[] = [
+  {
+    href: '/life-balance',
+    label: '삶의 균형',
+    icon: Compass,
+    description: '활동과 자기평가로 삶의 균형을 돌아봅니다.',
+    phase: 4,
+  },
   {
     href: '/dashboard',
     label: '대시보드',

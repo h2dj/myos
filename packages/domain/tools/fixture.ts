@@ -1,7 +1,9 @@
+import { LIFE_FRAMEWORKS, utcToLocalDate } from '@myos/core';
 import { randomUUID } from 'node:crypto';
 import { schema, type Db } from '@myos/db';
 import {
   ensureUserProfile,
+  saveLifeBalance,
   createProject,
   createActivity,
   createActivityPlace,
@@ -93,5 +95,26 @@ export async function seedRehearsal(db: Db) {
     digest: preview.digest,
     selected: [0],
   });
+  const reviewDay = utcToLocalDate(new Date(), 'Asia/Seoul');
+  await saveLifeBalance(
+    db,
+    actor,
+    {
+      framework: 'wheel',
+      from: reviewDay,
+      to: reviewDay,
+      selfWeight: 70,
+      reflection: '검증용 회고',
+      nextAction: '산책하기',
+      areas: LIFE_FRAMEWORKS.wheel.areas.map((a) => ({
+        id: a.id,
+        selfScore: 6,
+        target: 2,
+        tag: a.label,
+        activityIds: [],
+      })),
+    },
+    randomUUID(),
+  );
   return { actor, workspaceId, projectId: child.id };
 }

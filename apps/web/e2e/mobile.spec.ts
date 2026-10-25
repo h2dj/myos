@@ -50,3 +50,14 @@ for (const width of [320, 390]) {
     ).toHaveCount(0);
   });
 }
+
+test('모바일 삶의 균형은 점수와 표를 화면 안에서 제공한다', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await signUp(page);
+  await page.goto('/life-balance');
+  for (const score of await page.getByLabel(/자기평가 \(0~10\)/).all()) await score.fill('5');
+  await page.getByRole('button', { name: '활동 불러오고 점수 계산' }).click();
+  await expect(page.getByRole('img', { name: /레이더 차트/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: '현재 회고 결과' })).toContainText('완료 기록 0건');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});

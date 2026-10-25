@@ -114,6 +114,11 @@ export async function restoreBackupForVerification(db: Db, text: string) {
         .insert(schema.entityTags)
         .values(rows.map((row) => revive(row) as typeof schema.entityTags.$inferInsert)),
     );
+    await batch(t.lifeReviews ?? [], (rows) =>
+      tx
+        .insert(schema.lifeReviews)
+        .values(rows.map((row) => revive(row) as typeof schema.lifeReviews.$inferInsert)),
+    );
     await batch(t.externalRefs ?? [], (rows) =>
       tx
         .insert(schema.externalRefs)

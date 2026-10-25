@@ -1,5 +1,5 @@
 import { schema } from '@myos/db';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '@myos/db';
 import type { Actor } from '../context';
 import { requireAccess } from '../access';
@@ -84,15 +84,29 @@ export async function exportWorkspaceBackup(db: Db, actor: Actor, workspaceId: s
             )
             .limit(limit)
         : [];
+      const lifeReviews =
+        workspace!.type === 'personal' && workspace!.ownerId === actor.userId
+          ? await tx
+              .select()
+              .from(schema.lifeReviews)
+              .where(
+                and(
+                  eq(schema.lifeReviews.workspaceId, workspaceId),
+                  eq(schema.lifeReviews.userId, actor.userId),
+                ),
+              )
+              .limit(limit)
+          : [];
       // Date를 명시적인 ISO 문자열로 바꿔 파일 형식을 고정한다.
       return sealWorkspaceBackup(
         JSON.parse(
           JSON.stringify({
             format: 'myos-workspace',
-            version: 2,
+            version: 3,
             exportedAt: new Date().toISOString(),
             workspace,
             tables: {
+              lifeReviews,
               externalRefs,
               places,
               activities,
