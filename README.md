@@ -3,6 +3,8 @@
 할 일·프로젝트·지식·일정·재정을 한 화면에서 판단하고 실행하는 개인 운영 시스템.
 기획과 단계별 일정은 [docs/development-plan.md](docs/development-plan.md), 배포는 [docs/deploy.md](docs/deploy.md) 참고.
 
+삶의 영역별 활동·자기평가 회고는 [삶의 균형](docs/life-balance.md)을 참고하세요.
+
 ## 구조
 
 | 경로            | 내용                                       |

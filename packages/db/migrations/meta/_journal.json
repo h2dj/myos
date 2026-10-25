@@ -50,6 +50,13 @@
       "when": 1792750967291,
       "tag": "0006_tiresome_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792899331439,
+      "tag": "0007_life_reviews",
+      "breakpoints": true
     }
   ]
 }

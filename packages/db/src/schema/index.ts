@@ -5,3 +5,4 @@ export * from './automation';
 export * from './audit';
 
 export * from './external';
+export * from './life-balance';

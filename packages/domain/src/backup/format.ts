@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { schema } from '@myos/db';
+import { lifeBalanceInputSchema } from '../life-balance';
 import { ValidationError } from '../errors';
 
 export const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
@@ -26,6 +27,53 @@ const rule = z.discriminatedUnion('freq', [
 ]);
 const tablesSchema = z
   .object({
+    lifeReviews: z
+      .array(
+        z
+          .object({
+            ...base,
+            userId: uuid,
+            createdAt: date,
+            snapshot: z
+              .object({
+                version: z.literal(1),
+                input: lifeBalanceInputSchema,
+                timeZone: z.string().refine((tz) => {
+                  try {
+                    new Intl.DateTimeFormat('en', { timeZone: tz });
+                    return true;
+                  } catch {
+                    return false;
+                  }
+                }),
+                areas: z
+                  .array(
+                    z
+                      .object({
+                        id: z.string(),
+                        label: z.string(),
+                        selfScore: z.number().min(0).max(10),
+                        completed: z.number().int().min(0),
+                        target: z.number().int().min(1),
+                        activityScore: z.number().min(0).max(10),
+                        combined: z.number().min(0).max(10),
+                      })
+                      .strict(),
+                  )
+                  .min(1)
+                  .max(8),
+                selfScore: z.number().min(0).max(10),
+                activityScore: z.number().min(0).max(10),
+                combined: z.number().min(0).max(10),
+                totalCompleted: z.number().int().min(0),
+                unclassified: z.number().int().min(0),
+                conflicts: z.number().int().min(0),
+              })
+              .strict(),
+          })
+          .strict(),
+      )
+      .optional(),
     externalRefs: z
       .array(
         z
@@ -170,7 +218,7 @@ const tablesSchema = z
 const payloadSchema = z
   .object({
     format: z.literal('myos-workspace'),
-    version: z.union([z.literal(1), z.literal(2)]),
+    version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     exportedAt: date,
     workspace: z
       .object({
@@ -189,6 +237,7 @@ export type BackupPayload = z.infer<typeof payloadSchema>;
 export type BackupTables = BackupPayload['tables'];
 export type WorkspaceBackup = BackupPayload & { sha256: string };
 export const BACKUP_TABLES = [
+  'lifeReviews',
   'externalRefs',
   'places',
   'activities',
@@ -234,9 +283,15 @@ function validateRelations(backup: BackupPayload) {
   const { tables: t, workspace } = backup;
   if (
     (backup.version === 1 && t.externalRefs !== undefined) ||
-    (backup.version === 2 && t.externalRefs === undefined)
+    (backup.version >= 2 && t.externalRefs === undefined) ||
+    (backup.version < 3 && t.lifeReviews !== undefined) ||
+    (backup.version === 3 && t.lifeReviews === undefined)
   )
     throw new ValidationError('백업 버전과 가져오기 이력 형식이 일치하지 않습니다.');
+  for (const review of t.lifeReviews ?? []) {
+    if (workspace.type !== 'personal' || review.userId !== workspace.ownerId)
+      throw new ValidationError('개인 회고의 소유자 정보가 올바르지 않습니다.');
+  }
   const sources = new Set<string>();
   for (const ref of t.externalRefs ?? []) {
     const key = `${ref.provider}:${ref.externalId}`;
