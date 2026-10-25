@@ -55,6 +55,21 @@ export async function restoreBackupForVerification(db: Db, text: string) {
       role: 'owner',
     });
     // 버전별 고정 테이블만 허용한다. 파일에서 SQL/테이블 이름/접속 주소를 받지 않는다.
+    await batch(t.financeAccounts ?? [], (rows) =>
+      tx
+        .insert(schema.financeAccounts)
+        .values(rows.map((row) => revive(row) as typeof schema.financeAccounts.$inferInsert)),
+    );
+    await batch(t.financeEntries ?? [], (rows) =>
+      tx
+        .insert(schema.financeEntries)
+        .values(rows.map((row) => revive(row) as typeof schema.financeEntries.$inferInsert)),
+    );
+    await batch(t.financeBudgets ?? [], (rows) =>
+      tx
+        .insert(schema.financeBudgets)
+        .values(rows.map((row) => revive(row) as typeof schema.financeBudgets.$inferInsert)),
+    );
     await batch(t.places, (rows) =>
       tx
         .insert(schema.activityPlaces)

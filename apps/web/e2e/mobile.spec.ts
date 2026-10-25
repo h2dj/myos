@@ -67,3 +67,22 @@ test('모바일 삶의 균형은 점수와 표를 화면 안에서 제공한다'
   ).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
+
+test('모바일 재정은 계좌 입력과 거래 요약을 화면 안에 제공한다', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await signUp(page);
+  await page.goto('/finance');
+  await page.getByRole('button', { name: '계좌 추가', exact: true }).click();
+  const account = page.getByRole('dialog', { name: '계좌 추가', exact: true });
+  await account.getByLabel('계좌 이름').fill('모바일 생활비 통장');
+  await account.getByLabel('기초 잔액 (원)').fill('100000');
+  await account.getByRole('button', { name: '계좌 저장' }).click();
+  await expect(page.getByRole('region', { name: '재정 요약' })).toContainText('100,000원');
+  await page.getByRole('button', { name: '거래 추가', exact: true }).click();
+  const entry = page.getByRole('dialog', { name: '거래 추가', exact: true });
+  await entry.getByLabel('금액 (원)', { exact: true }).fill('5000');
+  await entry.getByLabel('거래 메모').fill('모바일 식사');
+  await entry.getByRole('button', { name: '거래 저장' }).click();
+  await expect(page.getByRole('region', { name: '재정 요약' })).toContainText('95,000원');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});

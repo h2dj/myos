@@ -6,3 +6,4 @@ export * from './audit';
 
 export * from './external';
 export * from './life-balance';
+export * from './finance';

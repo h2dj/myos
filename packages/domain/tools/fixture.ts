@@ -4,6 +4,10 @@ import { schema, type Db } from '@myos/db';
 import {
   ensureUserProfile,
   saveLifeBalance,
+  saveFinanceAccount,
+  saveFinanceEntry,
+  saveFinanceBudget,
+  setFinanceEntryDeleted,
   createProject,
   createActivity,
   createActivityPlace,
@@ -116,5 +120,44 @@ export async function seedRehearsal(db: Db) {
     },
     randomUUID(),
   );
+  const bank = await saveFinanceAccount(db, actor, {
+    name: '검증 은행',
+    kind: 'bank',
+    openingBalance: '100000',
+  });
+  const credit = await saveFinanceAccount(db, actor, {
+    name: '검증 카드',
+    kind: 'credit',
+    openingBalance: '-10000',
+  });
+  const payment = {
+    accountId: credit.id,
+    targetAccountId: null,
+    kind: 'expense',
+    amount: '5000',
+    category: '식비',
+    note: '검증 지출',
+    occurredOn: reviewDay,
+  };
+  await saveFinanceEntry(db, actor, payment, randomUUID());
+  await saveFinanceEntry(
+    db,
+    actor,
+    {
+      ...payment,
+      accountId: bank.id,
+      targetAccountId: credit.id,
+      kind: 'transfer',
+      amount: '10000',
+    },
+    randomUUID(),
+  );
+  const removed = await saveFinanceEntry(db, actor, payment, randomUUID());
+  await setFinanceEntryDeleted(db, actor, removed.id, true);
+  await saveFinanceBudget(db, actor, {
+    month: reviewDay.slice(0, 7),
+    category: '식비',
+    amount: '20000',
+  });
   return { actor, workspaceId, projectId: child.id };
 }

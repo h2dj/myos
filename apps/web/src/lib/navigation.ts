@@ -86,8 +86,8 @@ export const MAIN_NAV: NavItem[] = [
     href: '/finance',
     label: '재정 관리',
     icon: Wallet,
-    description: '수입·지출·자산·예산을 관리합니다.',
-    phase: 'v1.1',
+    description: '계좌·수입·지출·이체와 월 예산을 관리합니다.',
+    phase: 4,
   },
   {
     href: '/automations',

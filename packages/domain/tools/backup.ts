@@ -1,6 +1,8 @@
+import { utcToLocalDate } from '@myos/core';
 import { readFile, stat } from 'node:fs/promises';
 import {
   exportWorkspaceBackup,
+  getFinanceOverview,
   restoreBackupForVerification,
   parseWorkspaceBackup,
   MAX_BACKUP_BYTES,
@@ -19,9 +21,17 @@ try {
   if (arg === '--rehearse') {
     const report = await withIsolatedDb(async (source) => {
       const { actor, workspaceId } = await seedRehearsal(source.db);
+      const reviewMonth = utcToLocalDate(new Date(), 'Asia/Seoul').slice(0, 7);
+      const financeBefore = await getFinanceOverview(source.db, actor, reviewMonth);
       const text = JSON.stringify(await exportWorkspaceBackup(source.db, actor, workspaceId));
       return withIsolatedDb(async (target) => {
         const result = await restoreBackupForVerification(target.db, text);
+        const financeAfter = await getFinanceOverview(target.db, actor, reviewMonth);
+        if (
+          financeBefore.balance !== financeAfter.balance ||
+          financeBefore.expense !== financeAfter.expense
+        )
+          throw new Error('재정 잔액 복원 검증 실패');
         const backup = parseWorkspaceBackup(text);
         const ref = backup.tables.externalRefs?.[0];
         if (!ref) throw new Error('가져오기 이력 검증 데이터 누락');
@@ -50,6 +60,7 @@ try {
           ...result,
           overwriteRejected,
           importDuplicateRejected: true,
+          financeBalancesVerified: true,
           source: 'synthetic-fixture',
           target: 'ephemeral-local-postgres16',
         };
