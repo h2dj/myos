@@ -26,6 +26,11 @@ export default async function SettingsPage() {
             notifyEmail={user.notifyEmail}
             mailConfigured={engineDeps().mailer.channel !== 'none'}
           />
+          <div className="mt-4 border-t border-border pt-4">
+            <Link href="/reset-password" className={buttonClass('secondary')}>
+              비밀번호 변경
+            </Link>
+          </div>
         </section>
         <section className="rounded-xl border border-border bg-surface p-6">
           <h2 className="mb-3 font-semibold">공간</h2>

@@ -18,6 +18,9 @@ export function authMode(): AuthMode {
 export const DEV_SESSION_COOKIE = 'myos-dev-session';
 /** 세션 만료 (AUTH-01). Supabase는 대시보드의 세션 설정을 따른다. */
 export const DEV_SESSION_MAX_AGE = 60 * 60 * 12;
+/** 비밀번호 재설정 요청 표시. Supabase 재설정 링크 유효 시간(기본 1시간)에 맞춘다. */
+export const PASSWORD_RESET_COOKIE = 'myos-password-reset';
+export const PASSWORD_RESET_MAX_AGE = 60 * 60;
 
 /**
  * Supabase 공개 설정. 새 publishable 키(sb_publishable_…)를 우선 쓰고,

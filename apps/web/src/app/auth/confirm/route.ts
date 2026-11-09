@@ -2,12 +2,14 @@ import type { EmailOtpType, User } from '@supabase/supabase-js';
 import { ensureUserProfile } from '@myos/domain';
 import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@/server/db';
+import { PASSWORD_RESET_COOKIE } from '@/server/auth/mode';
 import { createSupabaseServerClient } from '@/server/auth/supabase';
 
 /**
- * 가입 확인 메일 링크 처리. 두 형식을 모두 받는다.
+ * 가입 확인·비밀번호 재설정 메일 링크 처리. 두 형식을 모두 받는다.
  * - Supabase 기본 템플릿({{ .ConfirmationURL }}): 확인 후 ?code=… 로 돌아온다 (PKCE)
- * - 직접 만든 템플릿: ?token_hash=…&type=email
+ * - 직접 만든 템플릿: ?token_hash=…&type=email|recovery
+ * 기본 템플릿은 재설정 여부를 알려주지 않으므로, 재설정을 요청한 브라우저에 남긴 쿠키로 구분한다.
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -32,7 +34,12 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: typeof name === 'string' ? name : undefined,
     });
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const recovery = type === 'recovery' || request.cookies.has(PASSWORD_RESET_COOKIE);
+    const response = NextResponse.redirect(
+      new URL(recovery ? '/reset-password' : '/dashboard', request.url),
+    );
+    if (recovery) response.cookies.delete({ name: PASSWORD_RESET_COOKIE, path: '/auth/confirm' });
+    return response;
   }
   return NextResponse.redirect(new URL('/login?error=confirm', request.url));
 }

@@ -33,3 +33,33 @@ test('위조된 세션 쿠키는 거부된다', async ({ page, context }) => {
   await page.goto('/dashboard');
   await expect(page).toHaveURL(/\/login/);
 });
+
+test('로그인 화면에서 비밀번호 찾기로 이동해 재설정을 요청한다', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByRole('link', { name: '비밀번호를 잊으셨나요?' }).click();
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await page.getByLabel('이메일').fill(uniqueEmail());
+  await page.getByRole('button', { name: '재설정 링크 받기' }).click();
+  await expect(page.getByRole('status')).toContainText('개발 모드에서는 메일을 보내지 않습니다');
+});
+
+test('새 비밀번호는 로그인해야 정할 수 있고, 확인 값이 다르면 거부된다', async ({ page }) => {
+  await page.goto('/reset-password');
+  await expect(page).toHaveURL(/\/login\?next=%2Freset-password/);
+
+  await signUp(page);
+  await page.goto('/settings');
+  await page.getByRole('link', { name: '비밀번호 변경' }).click();
+  await expect(page).toHaveURL(/\/reset-password$/);
+  await page.getByLabel('새 비밀번호', { exact: true }).fill('newpassword1');
+  await page.getByLabel('새 비밀번호 확인').fill('different1');
+  await page.getByRole('button', { name: '비밀번호 변경' }).click();
+  await expect(page.getByText('두 비밀번호가 일치하지 않습니다.')).toBeVisible();
+
+  await page.getByLabel('새 비밀번호', { exact: true }).fill('newpassword1');
+  await page.getByLabel('새 비밀번호 확인').fill('newpassword1');
+  await page.getByRole('button', { name: '비밀번호 변경' }).click();
+  await expect(page.getByRole('status')).toContainText(
+    '개발 모드에서는 비밀번호를 저장하지 않습니다',
+  );
+});

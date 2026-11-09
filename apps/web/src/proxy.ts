@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { verifyDevSession } from './server/auth/dev-session';
 import { DEV_SESSION_COOKIE, authMode, supabasePublicConfig } from './server/auth/mode';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/auth/', '/api/health'];
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/auth/', '/api/health'];
 
 /**
  * 1차 관문: 세션이 없으면 /login으로 보내고, Supabase 세션 토큰을 갱신한다.
@@ -43,7 +43,10 @@ export async function proxy(request: NextRequest) {
     if (request.cookies.has(DEV_SESSION_COOKIE)) redirect.cookies.delete(DEV_SESSION_COOKIE);
     return redirect;
   }
-  if (signedIn && (pathname === '/login' || pathname === '/signup')) {
+  if (
+    signedIn &&
+    (pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password')
+  ) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
   return response;
