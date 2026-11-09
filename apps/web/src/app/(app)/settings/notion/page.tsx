@@ -14,7 +14,7 @@ export default async function NotionImportPage() {
       </Link>
       <PageHeader
         title="Notion 가져오기"
-        description={`${workspace.name} 공간에 파일의 속성을 매핑하고, 미리보기 후 최대 10건을 표본으로 저장합니다.`}
+        description={`${workspace.name} 공간에 파일의 속성을 매핑하고, 미리보기 후 새 항목을 가져옵니다.`}
       />
       {workspace.role === 'owner' ? (
         <NotionImporter key={`${workspace.id}:${user.timezone}`} timeZone={user.timezone} />

@@ -65,3 +65,23 @@ test('Notion 가져오기는 로그인 후 사용할 수 있다', async ({ page 
   await page.goto('/settings/notion');
   await expect(page).toHaveURL(/\/login/);
 });
+
+test('Notion 파일의 새 항목을 10건 넘게 한 번에 가져온다', async ({ page }) => {
+  await signUp(page);
+  await page.goto('/settings/notion');
+  const rows = Array.from({ length: 12 }, (_, i) => `${randomUUID()},전체 가져오기 ${i + 1}`);
+  await page.getByLabel('Notion 파일', { exact: true }).setInputFiles({
+    name: 'notion.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(`id,이름\n${rows.join('\n')}\n`),
+  });
+  await page.getByRole('button', { name: '매핑 미리보기', exact: true }).click();
+  await page.getByRole('button', { name: '선택 해제', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: '선택한 0건 가져오기', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: '새 항목 모두 선택', exact: true }).click();
+  await page.getByLabel('선택한 행의 변환 값과 연결을 확인했습니다.').check();
+  await page.getByRole('button', { name: '선택한 12건 가져오기', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('저장 12건 · 건너뛰기 0건 · 실패 0건');
+});

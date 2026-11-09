@@ -132,7 +132,6 @@ describe('Notion file mapping', () => {
     for (const [key, value] of Object.entries({
       scheduledStart: '10/23/2026',
       status: '임의 상태',
-      project: `${randomUUID()},${randomUUID()}`,
       priority: '긴급',
     })) {
       const input = request('task', [{ id: randomUUID(), title: '검증', [key]: value }], {
@@ -150,6 +149,15 @@ describe('Notion file mapping', () => {
         )[0]!.error,
       ).toBeTruthy();
     }
+    const [first, second] = [randomUUID(), randomUUID()];
+    const multi = mapNotionFile(
+      request('task', [{ id: randomUUID(), title: '여러 과업', project: `${first},${second}` }], {
+        project: 'project',
+      }),
+      zone,
+    )[0]!.row!;
+    expect(multi.refs.project).toBe(first);
+    expect(multi.warnings.join()).toContain('첫 항목만');
     const missing = mapNotionFile(
       request('task', [{ id: randomUUID(), constructor: '제목' }, { id: randomUUID() }], {
         title: 'constructor',
@@ -392,7 +400,7 @@ describe('Notion sample import', () => {
     await expect(
       importNotionSample(db, user.actor, user.workspaceId, valid, zone, {
         digest: preview.digest,
-        selected: Array.from({ length: 11 }, (_, i) => i),
+        selected: Array.from({ length: 201 }, (_, i) => i),
       }),
     ).rejects.toThrow();
     await expect(
