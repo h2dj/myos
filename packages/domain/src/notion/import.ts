@@ -9,7 +9,7 @@ import { createTask } from '../tasks';
 import type { Actor, Executor } from '../context';
 import { DomainError, ValidationError } from '../errors';
 import { parse } from '../validation';
-import { readNotionFile } from './file';
+import { MAX_NOTION_ROWS, readNotionFile } from './file';
 import {
   importHash,
   mapNotionFile,
@@ -226,7 +226,16 @@ export async function previewNotionImport(
 const commitSchema = z
   .object({
     digest: z.string().regex(/^[a-f0-9]{64}$/),
-    selected: z.array(z.number().int().min(0).max(199)).min(1).max(10),
+    selected: z
+      .array(
+        z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_NOTION_ROWS - 1),
+      )
+      .min(1)
+      .max(MAX_NOTION_ROWS),
   })
   .strict();
 export type NotionImportSummary = {

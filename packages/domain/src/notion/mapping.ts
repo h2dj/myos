@@ -189,12 +189,16 @@ export function mapNotionFile(input: NotionRequest, timeZone: string) {
             (s) => !['오늘', '포기', '못함', 'p1', 'p2', 'p3'].includes(s.toLowerCase()),
           ),
         );
+        const warnings: string[] = [];
         const refs: MappedNotionRow['refs'] = {};
         for (const key of ['parent', 'project', 'activity', 'place'] as const) {
           const values = tokens(get(key));
-          if (values.length > 1)
-            fail(`${NOTION_FIELDS[key]}: 관계는 한 항목만 연결할 수 있습니다.`);
           if (values[0]) refs[key] = notionPageId(values[0]);
+          // MyOS는 한 항목만 연결한다. 나머지 관계는 원본 속성에 그대로 보존된다.
+          if (values.length > 1)
+            warnings.push(
+              `${NOTION_FIELDS[key].replace(' 원본 ID', '')}: 관계 ${values.length}개 중 첫 항목만 연결합니다. 나머지는 원본에 보존됩니다.`,
+            );
         }
         const scheduledStart = date(get('scheduledStart'), timeZone);
         const scheduledEnd = date(get('scheduledEnd'), timeZone, true);
@@ -202,7 +206,6 @@ export function mapNotionFile(input: NotionRequest, timeZone: string) {
           fail('예정 종료일은 시작일 이후여야 합니다.');
         const completedAt = date(get('completedAt'), timeZone);
         if (completedAt && status !== 'done') fail('완료일이 있으면 완료 상태도 지정하세요.');
-        const warnings: string[] = [];
         if (status === 'done' && !completedAt)
           warnings.push('완료일 미상으로 저장합니다. 오늘 완료한 것으로 바꾸지 않습니다.');
         const mapped = {

@@ -49,6 +49,9 @@ const aliases: Record<NotionField, string[]> = {
   createdAt: ['$notion.created_time', 'createdAt'],
   sourceUpdatedAt: ['$notion.last_edited_time', 'sourceUpdatedAt'],
 };
+const newRows = (preview: { rows: { index: number; disposition: string }[] }) =>
+  preview.rows.filter((r) => r.disposition === 'new').map((r) => r.index);
+
 function guess(columns: string[], kind: NotionKind): NotionMapping {
   const used = new Set<string>();
   return {
@@ -134,12 +137,7 @@ export function NotionImporter({ timeZone }: { timeZone: string }) {
         return setError(result.error);
       }
       setPreview(result.data);
-      setSelected(
-        result.data.rows
-          .filter((r) => r.disposition === 'new')
-          .slice(0, 10)
-          .map((r) => r.index),
-      );
+      setSelected(newRows(result.data));
     });
   }
   function save() {
@@ -159,8 +157,9 @@ export function NotionImporter({ timeZone }: { timeZone: string }) {
     <div className="min-w-0 space-y-6">
       <div className="space-y-2 text-sm text-muted">
         <p>
-          UTF-8 CSV 또는 JSON 배열·Notion 페이지 results JSON을 지원합니다. 파일당 256KiB·200행, 한
-          번에 최대 10건을 저장합니다. 날짜 변환과 미리보기는 {timeZone} 기준입니다.
+          UTF-8 CSV 또는 JSON 배열·Notion 페이지 results JSON을 지원합니다. 파일당 256KiB·200행이며,
+          미리보기한 새 항목을 한 번에 모두 저장할 수 있습니다. 날짜 변환과 미리보기는 {timeZone}
+          기준입니다.
         </p>
         <p>
           이름만으로 중복이나 관계를 추정하지 않습니다. 원본 페이지 ID/URL이 필요합니다. 관계는 먼저
@@ -256,6 +255,28 @@ export function NotionImporter({ timeZone }: { timeZone: string }) {
             미리보기 · {preview.rows.length}행 · 신규{' '}
             {preview.rows.filter((r) => r.disposition === 'new').length}건
           </h2>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() => {
+                setConfirmed(false);
+                setSelected(newRows(preview));
+              }}
+            >
+              새 항목 모두 선택
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pending || !selected.length}
+              onClick={() => {
+                setConfirmed(false);
+                setSelected([]);
+              }}
+            >
+              선택 해제
+            </Button>
+          </div>
           {preview.ignoredColumns.length > 0 && (
             <p className="break-words text-sm text-muted">
               필드로 변환하지 않는 속성: {preview.ignoredColumns.join(', ')}
@@ -270,11 +291,7 @@ export function NotionImporter({ timeZone }: { timeZone: string }) {
                     className="mt-1 size-4 shrink-0"
                     aria-label={`${r.index + 1}행 선택`}
                     checked={selected.includes(r.index)}
-                    disabled={
-                      pending ||
-                      r.disposition !== 'new' ||
-                      (!selected.includes(r.index) && selected.length >= 10)
-                    }
+                    disabled={pending || r.disposition !== 'new'}
                     onChange={(e) => {
                       setConfirmed(false);
                       setSelected(
