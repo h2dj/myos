@@ -55,6 +55,13 @@ export function AuthForm({
           placeholder="8자 이상 입력"
         />
       </Field>
+      {mode === 'login' && (
+        <p className="-mt-2 text-right text-sm">
+          <Link href="/forgot-password" className="text-muted hover:text-accent">
+            비밀번호를 잊으셨나요?
+          </Link>
+        </p>
+      )}
       {next && <input type="hidden" name="next" value={next} />}
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? '처리 중…' : mode === 'login' ? '이메일로 로그인' : '회원가입'}
