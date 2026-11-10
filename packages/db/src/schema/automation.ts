@@ -124,6 +124,8 @@ export const taskSeries = pgTable(
     timezone: text('timezone').notNull(),
     startDate: text('start_date').notNull(),
     endDate: text('end_date'),
+    /** 회차의 예정 시각 'HH:MM'(사용자 시간대). 없으면 종일 */
+    startTime: text('start_time'),
     /** 다음에 만들 회차 날짜 (YYYY-MM-DD) */
     nextOccurrence: text('next_occurrence'),
     active: boolean('active').notNull().default(true),

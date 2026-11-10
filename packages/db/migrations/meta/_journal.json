@@ -85,6 +85,13 @@
       "when": 1794302630469,
       "tag": "0011_task_sequence",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794307963957,
+      "tag": "0012_task_series_start_time",
+      "breakpoints": true
     }
   ]
 }

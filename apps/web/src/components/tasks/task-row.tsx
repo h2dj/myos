@@ -1,6 +1,6 @@
 'use client';
 
-import { formatLocalDay, taskAnchorDate, utcToLocalDate } from '@myos/core';
+import { formatLocalDay, taskAnchorDate, taskTimeLabel, utcToLocalDate } from '@myos/core';
 import type { TaskQuickAction, TaskStatus, TaskWithTags } from '@myos/domain';
 import Link from 'next/link';
 import { MoreHorizontal, Repeat } from 'lucide-react';
@@ -34,6 +34,7 @@ export function TaskRow({
 }) {
   const done = task.status === 'done';
   const anchor = taskAnchorDate(task);
+  const time = taskTimeLabel(task, timeZone);
   const isOverdue =
     anchor &&
     utcToLocalDate(new Date(anchor), timeZone) < utcToLocalDate(now, timeZone) &&
@@ -145,6 +146,7 @@ export function TaskRow({
         {anchor && (
           <span className="shrink-0 text-xs text-muted">
             {formatLocalDay(new Date(anchor), timeZone)}
+            {time && ` ${time}`}
           </span>
         )}
       </div>

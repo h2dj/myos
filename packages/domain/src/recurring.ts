@@ -1,5 +1,7 @@
 import {
   addDaysToDate,
+  isValidTime,
+  localDateTimeToUtc,
   localDateToUtc,
   nextOccurrenceAfter,
   occurrencesBetween,
@@ -47,6 +49,8 @@ const createInput = z.object({
   timezone: z.string().min(1),
   startDate: dateString,
   endDate: dateString.nullable().optional(),
+  /** 회차의 예정 시각 'HH:MM'. 없으면 종일 할 일로 만든다 */
+  startTime: z.string().refine(isValidTime, 'HH:MM 형식').nullable().optional(),
 });
 
 /**
@@ -126,8 +130,10 @@ export async function generateSeriesOccurrences(
           title: s.title,
           description: s.description,
           priority: s.priority as (typeof tasks.priority.enumValues)[number],
-          scheduledStart: localDateToUtc(date, s.timezone),
-          allDay: true,
+          scheduledStart: s.startTime
+            ? localDateTimeToUtc(date, s.startTime, s.timezone)
+            : localDateToUtc(date, s.timezone),
+          allDay: !s.startTime,
           seriesId: s.id,
           occurrenceDate: date,
           createdBy: s.createdBy,

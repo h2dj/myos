@@ -1,0 +1,1 @@
+ALTER TABLE "task_series" ADD COLUMN "start_time" text;
