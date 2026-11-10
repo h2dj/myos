@@ -20,7 +20,7 @@ import type {
   TaskWithTags,
 } from '@myos/domain';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
-import { useMemo, useOptimistic, useState, useTransition } from 'react';
+import { type DragEvent, useMemo, useOptimistic, useState, useTransition } from 'react';
 import { setTaskStatusAction, taskQuickAction } from '@/server/actions/tasks';
 import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
@@ -308,6 +308,8 @@ function BucketList({
 
 const BOARD_COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'done'];
 
+const DRAG_TYPE = 'application/x-myos-task';
+
 function Board({
   tasks,
   onStatus,
@@ -317,22 +319,67 @@ function Board({
   onStatus: (t: TaskWithTags, s: TaskStatus) => void;
   onOpen: (t: TaskWithTags) => void;
 }) {
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
+
+  function endDrag() {
+    setDraggingId(null);
+    setOverStatus(null);
+  }
+
+  function drop(e: DragEvent, status: TaskStatus) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData(DRAG_TYPE) || draggingId;
+    const task = tasks.find((t) => t.id === id);
+    endDrag();
+    if (task && task.status !== status) onStatus(task, status);
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {BOARD_COLUMNS.map((status) => {
         const items = tasks.filter((t) => t.status === status);
+        const isOver = overStatus === status && draggingId !== null;
         return (
           <section
             key={status}
-            className="rounded-xl bg-surface-muted p-3"
+            className={`rounded-xl bg-surface-muted p-3 transition-shadow ${
+              isOver ? 'ring-2 ring-accent' : ''
+            }`}
             aria-label={TASK_STATUS_LABEL[status]}
+            data-drop-target={status}
+            onDragOver={(e) => {
+              if (!draggingId && !e.dataTransfer.types.includes(DRAG_TYPE)) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (overStatus !== status) setOverStatus(status);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setOverStatus((s) => (s === status ? null : s));
+              }
+            }}
+            onDrop={(e) => drop(e, status)}
           >
             <h2 className="mb-3 px-1 text-sm font-semibold">
               {TASK_STATUS_LABEL[status]} <span className="text-muted">{items.length}</span>
             </h2>
-            <ul className="space-y-2">
+            <ul className="min-h-12 space-y-2">
               {items.map((t) => (
-                <li key={t.id} className="rounded-lg border border-border bg-surface p-3 shadow-xs">
+                <li
+                  key={t.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(DRAG_TYPE, t.id);
+                    e.dataTransfer.setData('text/plain', t.title);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggingId(t.id);
+                  }}
+                  onDragEnd={endDrag}
+                  className={`cursor-grab rounded-lg border border-border bg-surface p-3 shadow-xs active:cursor-grabbing ${
+                    draggingId === t.id ? 'opacity-50' : ''
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => onOpen(t)}
