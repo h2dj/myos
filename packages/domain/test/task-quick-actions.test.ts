@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { localDateToUtc } from '@myos/core';
-import { createTask, getTask, listTasks, runTaskQuickAction, type TaskQuickAction } from '../src';
+import {
+  completeOverdueTasks,
+  createTask,
+  getTask,
+  listTasks,
+  runTaskQuickAction,
+  type TaskQuickAction,
+} from '../src';
 import { db, newUser } from './helpers';
 
 const tz = 'Asia/Seoul';
@@ -148,6 +155,56 @@ describe('할 일 빠른 작업', () => {
     ] as TaskQuickAction[]) {
       await expect(runTaskQuickAction(db, other.actor, task.id, action, tz, now)).rejects.toThrow();
     }
+    expect((await getTask(db, owner.actor, task.id)).status).toBe('todo');
+  });
+});
+
+describe('지난 할 일 일괄 완료', () => {
+  it('지난 미완료 할 일만 각자의 날짜에 완료하고 나머지는 건너뛴다', async () => {
+    const { actor, workspaceId } = await newUser();
+    const older = localDateToUtc('2026-04-10', tz);
+    const a = await createTask(db, actor, { workspaceId, title: '지난 1', scheduledStart: past });
+    const b = await createTask(db, actor, {
+      workspaceId,
+      title: '지난 2',
+      status: 'in_progress',
+      dueAt: older,
+    });
+    const future = await createTask(db, actor, {
+      workspaceId,
+      title: '내일',
+      scheduledStart: tomorrow,
+    });
+    const finished = await createTask(db, actor, {
+      workspaceId,
+      title: '이미 끝남',
+      status: 'cancelled',
+      scheduledStart: past,
+    });
+
+    const res = await completeOverdueTasks(
+      db,
+      actor,
+      [a.id, b.id, future.id, finished.id, a.id],
+      tz,
+      now,
+    );
+    expect(res.completed).toBe(2);
+    expect(await getTask(db, actor, a.id)).toMatchObject({ status: 'done', completedAt: past });
+    expect(await getTask(db, actor, b.id)).toMatchObject({ status: 'done', completedAt: older });
+    expect((await getTask(db, actor, future.id)).status).toBe('todo');
+    expect((await getTask(db, actor, finished.id)).status).toBe('cancelled');
+  });
+
+  it('다른 사람의 할 일은 처리하지 않는다', async () => {
+    const owner = await newUser();
+    const other = await newUser();
+    const task = await createTask(db, owner.actor, {
+      workspaceId: owner.workspaceId,
+      title: '남의 일',
+      scheduledStart: past,
+    });
+    await expect(completeOverdueTasks(db, other.actor, [task.id], tz, now)).rejects.toThrow();
     expect((await getTask(db, owner.actor, task.id)).status).toBe('todo');
   });
 });
