@@ -54,6 +54,14 @@
 - 워크플로는 Environment **`production`**의 Secret을 읽는다. 같은 이름의 Repository secret이 따로 있어도 Environment 쪽이 우선하므로, 고친 값을 Environment 쪽에 저장했는지 확인한다.
 - Supabase에서 비밀번호를 재설정한 직후에는 풀러에 반영되기까지 몇 분 걸릴 수 있다.
 
+**일시정지 예방 (무료 플랜)**
+
+Supabase 무료 플랜은 7일간 활동이 없으면 프로젝트를 일시정지한다. 워크플로 **Supabase 일시정지 예방**(`.github/workflows/keepalive.yml`)이 매주 월·목 같은 Secret으로 `select now()`를 보내 이를 막는다.
+
+- 이미 일시정지됐다면 Supabase 대시보드에서 **Restore project**로 먼저 복구한다. 정지된 DB에는 이 워크플로가 접속하지 못해 실패한다.
+- 복구 후 Actions → **Supabase 일시정지 예방** → Run workflow로 한 번 실행해 성공하는지 확인한다.
+- 공개 저장소는 60일간 커밋이 없으면 GitHub가 예약 워크플로를 끈다. 실행 실패나 비활성화 메일이 오면 Actions 화면에서 다시 켠다.
+
 ## 3. Vercel (웹)
 
 1. Add New → Project → GitHub `h2dj/myos` 가져오기.

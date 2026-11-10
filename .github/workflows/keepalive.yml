@@ -1,0 +1,22 @@
+name: Supabase 일시정지 예방
+
+# Supabase 무료 플랜은 7일간 활동이 없으면 프로젝트를 일시정지한다.
+# 주 2회 운영 DB에 가벼운 쿼리를 보내 활동 기록을 남긴다. 수동 실행도 가능.
+# 필요한 Secret: MIGRATION_DATABASE_URL (마이그레이션 워크플로와 같은 값)
+on:
+  schedule:
+    - cron: '17 3 * * 1,4' # 매주 월·목 03:17 UTC (KST 12:17)
+  workflow_dispatch:
+
+concurrency: supabase-keepalive
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: DB 쿼리
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "select now()"
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
