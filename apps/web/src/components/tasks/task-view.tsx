@@ -19,7 +19,7 @@ import type {
   TaskStatus,
   TaskWithTags,
 } from '@myos/domain';
-import { CheckCheck, ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { CheckCheck, CheckSquare, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { type DragEvent, useMemo, useOptimistic, useState, useTransition } from 'react';
 import {
   completeOverdueTasksAction,
@@ -35,6 +35,7 @@ import { TaskForm } from './task-form';
 import { TaskSequencePanel } from './task-sequence-panel';
 import { TaskRow } from './task-row';
 import { DeleteTaskButton, StopSeriesButton } from './task-actions';
+import { TaskBulkEditBar, useTaskSelection, type TaskSelection } from './task-bulk-edit';
 
 type ProjectOption = Pick<ProjectWithProgress, 'id' | 'name' | 'parentId'>;
 
@@ -121,6 +122,9 @@ export function TaskView({
   }
 
   const today = utcToLocalDate(new Date(now), timeZone);
+  const [selecting, setSelecting] = useState(false);
+  const visibleIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+  const selection = useTaskSelection(visibleIds);
 
   return (
     <div className="space-y-4">
@@ -134,6 +138,18 @@ export function TaskView({
         >
           <Plus className="size-4" /> 자세히 추가
         </Button>
+        {view === 'list' && (
+          <Button
+            variant="secondary"
+            aria-pressed={selecting}
+            onClick={() => {
+              if (selecting) selection.clear();
+              setSelecting(!selecting);
+            }}
+          >
+            <CheckSquare className="size-4" /> 여러 개 선택
+          </Button>
+        )}
       </QuickAddTask>
 
       <div className="flex flex-wrap gap-2" aria-label="필터">
@@ -180,6 +196,20 @@ export function TaskView({
 
       <FormMessage error={error} />
 
+      {selecting && view === 'list' && (
+        <TaskBulkEditBar
+          selection={selection}
+          projects={projects}
+          activities={activities}
+          activityPlaces={activityPlaces}
+          hideProject={!!fixedProjectId}
+          onClose={() => {
+            selection.clear();
+            setSelecting(false);
+          }}
+        />
+      )}
+
       {view === 'calendar' ? (
         <TaskCalendar
           tasks={filtered}
@@ -204,6 +234,7 @@ export function TaskView({
           onStatus={changeStatus}
           onToggle={toggle}
           onOpen={setEditing}
+          selection={selecting ? selection : undefined}
         />
       ) : (
         <Board tasks={filtered} onStatus={changeStatus} onOpen={setEditing} />
@@ -260,10 +291,12 @@ function BucketList({
   onQuickAction,
   onCompleteOverdue,
   pending,
+  selection,
 }: {
   tasks: TaskWithTags[];
   timeZone: string;
   now: Date;
+  selection?: TaskSelection;
   onQuickAction: (t: TaskWithTags, action: TaskQuickAction) => void;
   onCompleteOverdue: (items: TaskWithTags[]) => void;
   pending: boolean;
@@ -360,6 +393,8 @@ function BucketList({
                     onStatus={onStatus}
                     onToggle={onToggle}
                     onOpen={onOpen}
+                    selected={selection?.selected.has(t.id)}
+                    onSelect={selection && ((task) => selection.toggle(task.id))}
                   />
                 ))}
               </ul>

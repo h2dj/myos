@@ -12,6 +12,7 @@ import {
   restoreTask,
   setTaskStatus,
   updateTask,
+  bulkUpdateTasks,
   runTaskQuickAction,
   type TaskQuickAction,
   type TaskSequenceDirection,
@@ -116,6 +117,23 @@ export async function setTaskStatusAction(taskId: string, status: TaskStatus) {
     },
     PATHS,
     'task.status',
+  );
+}
+
+export type TaskBulkPatch = {
+  status?: TaskStatus;
+  priority?: Priority;
+  projectId?: string | null;
+  activityId?: string | null;
+  activityPlaceId?: string | null;
+};
+
+export async function bulkUpdateTasksAction(taskIds: string[], patch: TaskBulkPatch) {
+  return runAction(
+    async ({ actor, workspace }) =>
+      bulkUpdateTasks(db, actor, { workspaceId: workspace.id, taskIds, patch }),
+    PATHS,
+    'task.update',
   );
 }
 

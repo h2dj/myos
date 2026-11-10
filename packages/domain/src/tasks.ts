@@ -142,6 +142,72 @@ export function setTaskStatus(db: Executor, actor: Actor, taskId: string, status
   return updateTask(db, actor, taskId, { status });
 }
 
+const bulkUpdateInput = z.object({
+  workspaceId: z.uuid(),
+  taskIds: z.array(z.uuid()).min(1, '할 일을 하나 이상 선택하세요').max(500),
+  patch: z
+    .object({
+      status: taskFields.status,
+      priority: taskFields.priority,
+      projectId: taskFields.projectId,
+      activityId: taskFields.activityId,
+      activityPlaceId: taskFields.activityPlaceId,
+    })
+    .refine((p) => Object.values(p).some((v) => v !== undefined), '바꿀 속성을 고르세요'),
+});
+
+/**
+ * 여러 할 일에 같은 속성을 한 번에 지정한다. patch의 undefined 항목은 그대로 두고,
+ * null은 비운다. 하나라도 다른 공간·삭제된 할 일이면 전부 취소한다.
+ */
+export async function bulkUpdateTasks(
+  db: Executor,
+  actor: Actor,
+  input: z.input<typeof bulkUpdateInput>,
+) {
+  const { workspaceId, taskIds, patch } = parse(bulkUpdateInput, input);
+  const ids = [...new Set(taskIds)];
+
+  return db.transaction(async (tx) => {
+    await requireAccess(tx, actor, workspaceId, 'write');
+    if (patch.projectId) await assertProjectInWorkspace(tx, patch.projectId, workspaceId);
+    if (patch.activityId) await assertActivityInWorkspace(tx, patch.activityId, workspaceId);
+    if (patch.activityPlaceId)
+      await assertActivityPlaceInWorkspace(tx, patch.activityPlaceId, workspaceId);
+
+    const current = await tx
+      .select({ id: tasks.id, status: tasks.status, completedAt: tasks.completedAt })
+      .from(tasks)
+      .where(
+        and(inArray(tasks.id, ids), eq(tasks.workspaceId, workspaceId), isNull(tasks.deletedAt)),
+      );
+    if (current.length !== ids.length) throw new NotFoundError('할 일');
+
+    const { status, ...rest } = patch;
+    const fields = Object.fromEntries(
+      Object.entries(rest).filter(([, v]) => v !== undefined),
+    ) as Partial<Task>;
+    if (Object.keys(fields).length > 0)
+      await tx.update(tasks).set(fields).where(inArray(tasks.id, ids));
+
+    for (const row of current) {
+      if (status !== undefined && status !== row.status) {
+        await tx
+          .update(tasks)
+          .set({ status, completedAt: status === 'done' ? (row.completedAt ?? new Date()) : null })
+          .where(eq(tasks.id, row.id));
+      }
+      await recordAudit(tx, actor, {
+        workspaceId,
+        action: status && status !== row.status ? `task.status.${status}` : 'task.update',
+        entityType: 'task',
+        entityId: row.id,
+      });
+    }
+    return { updated: ids.length };
+  });
+}
+
 export type TaskQuickAction = 'today' | 'tomorrow' | 'copyTomorrow' | 'completeOnDate';
 
 export async function runTaskQuickAction(

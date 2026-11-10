@@ -17,8 +17,13 @@ export function TaskRow({
   now,
   pending,
   onQuickAction,
+  selected,
+  onSelect,
 }: {
   task: TaskWithTags;
+  /** 여러 개 선택 모드일 때만 넘긴다 */
+  selected?: boolean;
+  onSelect?: (task: TaskWithTags) => void;
   timeZone: string;
   now: Date;
   pending: boolean;
@@ -35,7 +40,18 @@ export function TaskRow({
     !done &&
     task.status !== 'cancelled';
   return (
-    <li className="group flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2 py-2.5 last:border-b-0">
+    <li
+      className={`group flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2 py-2.5 last:border-b-0 ${selected ? 'bg-accent/10' : ''}`}
+    >
+      {onSelect && (
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={() => onSelect(task)}
+          aria-label={`${task.title} 선택`}
+          className="size-4 shrink-0 accent-primary"
+        />
+      )}
       <input
         type="checkbox"
         checked={done}
