@@ -1,6 +1,12 @@
 'use server';
 
-import { localDateToUtc, utcToLocalDate, type RecurrenceRule } from '@myos/core';
+import {
+  isValidTime,
+  localDateTimeToUtc,
+  localDateToUtc,
+  utcToLocalDate,
+  type RecurrenceRule,
+} from '@myos/core';
 import {
   createRecurringTask,
   completeOverdueTasks,
@@ -14,6 +20,7 @@ import {
   updateTask,
   bulkUpdateTasks,
   runTaskQuickAction,
+  ValidationError,
   type TaskQuickAction,
   type TaskSequenceDirection,
   type TaskStatus,
@@ -25,9 +32,20 @@ const PATHS = ['/tasks', '/dashboard', '/projects'];
 
 type Priority = 'none' | 'low' | 'medium' | 'high';
 
+/** 선택 입력한 시각('HH:MM'). 날짜 없이 시각만 넣으면 오류 */
+function timeOf(form: FormData, key: string, date: string | undefined): string | undefined {
+  const time = str(form, key);
+  if (!time) return undefined;
+  if (!isValidTime(time)) throw new ValidationError('시간은 HH:MM 형식으로 입력하세요.');
+  if (!date) throw new ValidationError('시간을 지정하려면 날짜도 입력하세요.');
+  return time;
+}
+
 function taskFields(form: FormData, timeZone: string) {
   const date = str(form, 'date');
   const due = str(form, 'due');
+  const time = timeOf(form, 'time', date);
+  const dueTime = timeOf(form, 'dueTime', due);
   return {
     title: str(form, 'title') ?? '',
     description: str(form, 'description') ?? null,
@@ -35,9 +53,18 @@ function taskFields(form: FormData, timeZone: string) {
     projectId: str(form, 'projectId') ?? null,
     activityId: str(form, 'activityId') ?? null,
     activityPlaceId: str(form, 'activityPlaceId') ?? null,
-    scheduledStart: date ? localDateToUtc(date, timeZone) : null,
-    // 마감은 그 날 끝(다음 날 00:00 직전)으로 저장
-    dueAt: due ? new Date(localDateToUtc(due, timeZone).getTime() + 86_400_000 - 1) : null,
+    scheduledStart: date
+      ? time
+        ? localDateTimeToUtc(date, time, timeZone)
+        : localDateToUtc(date, timeZone)
+      : null,
+    allDay: !time,
+    // 시간 없는 마감은 그 날 끝(다음 날 00:00 직전)으로 저장
+    dueAt: due
+      ? dueTime
+        ? localDateTimeToUtc(due, dueTime, timeZone)
+        : new Date(localDateToUtc(due, timeZone).getTime() + 86_400_000 - 1)
+      : null,
     tags: tagList(form),
   };
 }
@@ -82,6 +109,7 @@ export async function createTaskAction(form: FormData) {
             rule,
             timezone: user.timezone,
             startDate,
+            startTime: fields.allDay ? null : (str(form, 'time') ?? null),
           },
           today,
         );

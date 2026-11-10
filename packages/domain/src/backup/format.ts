@@ -235,6 +235,11 @@ const tablesSchema = z
           }),
           startDate: day,
           endDate: day.nullable(),
+          startTime: z
+            .string()
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+            .nullable()
+            .optional(),
           nextOccurrence: day.nullable(),
           active: z.boolean(),
         })

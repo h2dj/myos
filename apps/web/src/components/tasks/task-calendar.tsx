@@ -1,7 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { calendarRange, calendarTaskDates, shiftCalendarDate } from '@myos/core';
+import {
+  calendarRange,
+  calendarTaskDates,
+  hasDueTime,
+  shiftCalendarDate,
+  utcToLocalTime,
+} from '@myos/core';
 import type { TaskWithTags } from '@myos/domain';
 
 export function TaskCalendar({
@@ -97,6 +103,14 @@ export function TaskCalendar({
                   {tasks.map((task) => {
                     const { scheduled, due } = calendarTaskDates(task, day, timeZone);
                     if (!scheduled && !due) return null;
+                    const startTime =
+                      task.scheduledStart && !task.allDay
+                        ? utcToLocalTime(new Date(task.scheduledStart), timeZone)
+                        : null;
+                    const dueTime =
+                      task.dueAt && hasDueTime(task.dueAt)
+                        ? utcToLocalTime(new Date(task.dueAt), timeZone)
+                        : null;
                     return (
                       <li key={task.id}>
                         <button
@@ -106,12 +120,10 @@ export function TaskCalendar({
                         >
                           <span className={due ? 'text-danger' : 'text-muted'}>
                             {scheduled && due
-                              ? '예정·마감'
+                              ? `예정·마감${dueTime ? ` ${dueTime}` : ''}`
                               : due
-                                ? '마감'
-                                : task.allDay
-                                  ? '종일'
-                                  : '예정'}
+                                ? `마감${dueTime ? ` ${dueTime}` : ''}`
+                                : (startTime ?? '종일')}
                           </span>{' '}
                           {task.title}
                         </button>

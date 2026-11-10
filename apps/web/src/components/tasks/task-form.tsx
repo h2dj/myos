@@ -8,7 +8,7 @@ import { createProjectAction } from '@/server/actions/projects';
 import { Button } from '../ui/button';
 import { Field, Input, Select, Textarea } from '../ui/field';
 import { FormMessage } from '../ui/form-message';
-import { projectPath, utcToLocalDate } from '@myos/core';
+import { hasDueTime, projectPath, utcToLocalDate, utcToLocalTime } from '@myos/core';
 
 export function TaskForm({
   task,
@@ -42,6 +42,9 @@ export function TaskForm({
   const [placeId, setPlaceId] = useState(task?.activityPlaceId ?? '');
   const projectOptions = [...new Map([...projects, ...newProjects].map((p) => [p.id, p])).values()];
   const local = (d: Date | null) => (d ? utcToLocalDate(new Date(d), timeZone) : '');
+  const localTime = (d: Date | null) => (d ? utcToLocalTime(new Date(d), timeZone) : '');
+  const startTime = task?.scheduledStart && !task.allDay ? localTime(task.scheduledStart) : '';
+  const dueTime = task?.dueAt && hasDueTime(task.dueAt) ? localTime(task.dueAt) : '';
 
   function submit(form: FormData) {
     startTransition(async () => {
@@ -78,8 +81,14 @@ export function TaskForm({
             defaultValue={local(task?.scheduledStart ?? null) || defaults?.date}
           />
         </Field>
+        <Field label="예정 시간 (선택)">
+          <Input name="time" type="time" defaultValue={startTime} />
+        </Field>
         <Field label="마감일">
           <Input name="due" type="date" defaultValue={local(task?.dueAt ?? null)} />
+        </Field>
+        <Field label="마감 시간 (선택)">
+          <Input name="dueTime" type="time" defaultValue={dueTime} />
         </Field>
         <Field label="우선순위">
           <Select name="priority" defaultValue={task?.priority ?? 'none'}>

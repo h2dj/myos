@@ -60,6 +60,26 @@ describe('반복 할 일 (TASK-02, 인수 테스트 #3)', () => {
     expect(await occurrences(series.id)).toHaveLength(4);
   });
 
+  it('예정 시각을 지정하면 회차가 그 시각의 시간 지정 할 일로 생긴다', async () => {
+    const { actor, workspaceId } = await newUser();
+    const { created } = await createRecurringTask(
+      db,
+      actor,
+      {
+        workspaceId,
+        title: '아침 운동',
+        rule: { freq: 'daily' },
+        timezone: TZ,
+        startDate: '2026-04-22',
+        startTime: '07:30',
+      },
+      '2026-04-22',
+    );
+    const task = await getTask(db, actor, created[0]!);
+    expect(task.allDay).toBe(false);
+    expect(task.scheduledStart?.toISOString()).toBe('2026-04-21T22:30:00.000Z');
+  });
+
   it('회차 날짜가 이미 있으면(직접 되돌린 시리즈 커서 등) 건너뛴다', async () => {
     const { actor, workspaceId } = await newUser();
     const { series } = await createRecurringTask(
