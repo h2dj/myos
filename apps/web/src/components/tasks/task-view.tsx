@@ -32,6 +32,7 @@ import { Select } from '../ui/field';
 import { FormMessage } from '../ui/form-message';
 import { QuickAddTask } from './quick-add-task';
 import { TaskForm } from './task-form';
+import { TaskSequencePanel } from './task-sequence-panel';
 import { TaskRow } from './task-row';
 import { DeleteTaskButton, StopSeriesButton } from './task-actions';
 
@@ -230,6 +231,9 @@ export function TaskView({
               timeZone={timeZone}
               onDone={() => setEditing(null)}
             />
+            <div className="mt-4">
+              <TaskSequencePanel key={editing.id} taskId={editing.id} />
+            </div>
             <div className="mt-4">
               <RelatedItemsPanel key={editing.id} source={{ type: 'task', id: editing.id }} />
             </div>
