@@ -5,6 +5,7 @@ export const TIMING_OPERATIONS = [
   'task.update',
   'task.status',
   'task.quick',
+  'task.completeOverdue',
   'task.delete',
   'task.restore',
   'tasks.list',

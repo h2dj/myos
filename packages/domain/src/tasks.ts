@@ -205,6 +205,53 @@ export async function runTaskQuickAction(
   });
 }
 
+/**
+ * 지난 날짜의 미완료 할 일을 한 번에 각자의 날짜에 완료한 것으로 처리한다.
+ * 이미 끝났거나 지난 할 일이 아닌 항목은 건너뛰고, 처리한 개수를 돌려준다.
+ */
+export async function completeOverdueTasks(
+  db: Executor,
+  actor: Actor,
+  taskIds: string[],
+  timeZone: string,
+  now = new Date(),
+) {
+  const ids = parse(z.array(z.string().uuid()).max(500), [...new Set(taskIds)]);
+  const today = utcToLocalDate(now, timeZone);
+  return db.transaction(async (tx) => {
+    const checked = new Set<string>();
+    let completed = 0;
+    for (const taskId of ids) {
+      const current = await loadTask(tx, taskId);
+      if (!checked.has(current.workspaceId)) {
+        await requireAccess(tx, actor, current.workspaceId, 'write');
+        checked.add(current.workspaceId);
+      }
+      const anchor = taskAnchorDate(current);
+      if (
+        !anchor ||
+        utcToLocalDate(anchor, timeZone) >= today ||
+        current.status === 'done' ||
+        current.status === 'cancelled'
+      ) {
+        continue;
+      }
+      await tx
+        .update(tasks)
+        .set({ status: 'done', completedAt: anchor })
+        .where(eq(tasks.id, taskId));
+      await recordAudit(tx, actor, {
+        workspaceId: current.workspaceId,
+        action: 'task.status.done',
+        entityType: 'task',
+        entityId: taskId,
+      });
+      completed++;
+    }
+    return { completed };
+  });
+}
+
 /** 휴지통으로 이동 (복구 가능) */
 export async function deleteTask(db: Executor, actor: Actor, taskId: string) {
   await db.transaction(async (tx) => {
