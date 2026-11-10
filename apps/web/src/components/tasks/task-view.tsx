@@ -19,9 +19,13 @@ import type {
   TaskStatus,
   TaskWithTags,
 } from '@myos/domain';
-import { CheckSquare, ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { CheckCheck, CheckSquare, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useMemo, useOptimistic, useState, useTransition } from 'react';
-import { setTaskStatusAction, taskQuickAction } from '@/server/actions/tasks';
+import {
+  completeOverdueTasksAction,
+  setTaskStatusAction,
+  taskQuickAction,
+} from '@/server/actions/tasks';
 import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
 import { Select } from '../ui/field';
@@ -58,10 +62,15 @@ export function TaskView({
   /** 프로젝트 상세에서 쓸 때: 새 할 일을 이 프로젝트에 넣고 프로젝트 필터를 숨긴다 */
   fixedProjectId?: string;
 }) {
-  const [optimistic, applyStatus] = useOptimistic(
+  const [optimistic, applyOptimistic] = useOptimistic(
     tasks,
-    (state, { id, status }: { id: string; status: TaskStatus }) =>
-      state.map((t) => (t.id === id ? { ...t, status } : t)),
+    (state, change: { id: string; status: TaskStatus } | { hide: string[] }): TaskWithTags[] => {
+      if ('hide' in change) {
+        const hidden = new Set(change.hide);
+        return state.filter((t) => !hidden.has(t.id));
+      }
+      return state.map((t) => (t.id === change.id ? { ...t, status: change.status } : t));
+    },
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
@@ -84,7 +93,7 @@ export function TaskView({
   function changeStatus(task: TaskWithTags, status: TaskStatus) {
     setError(undefined);
     startTransition(async () => {
-      applyStatus({ id: task.id, status });
+      applyOptimistic({ id: task.id, status });
       const res = await setTaskStatusAction(task.id, status);
       if (!res.ok) setError(res.error);
     });
@@ -96,6 +105,17 @@ export function TaskView({
     setError(undefined);
     startTransition(async () => {
       const res = await taskQuickAction(task.id, action);
+      if (!res.ok) setError(res.error);
+    });
+  }
+
+  // 지난 할 일은 각자의 날짜에 완료한 것으로 기록되어 목록에서 바로 사라진다
+  function completeOverdue(items: TaskWithTags[]) {
+    setError(undefined);
+    const ids = items.map((t) => t.id);
+    startTransition(async () => {
+      applyOptimistic({ hide: ids });
+      const res = await completeOverdueTasksAction(ids);
       if (!res.ok) setError(res.error);
     });
   }
@@ -208,6 +228,7 @@ export function TaskView({
           timeZone={timeZone}
           now={new Date(now)}
           onQuickAction={quickAction}
+          onCompleteOverdue={completeOverdue}
           pending={pending}
           onStatus={changeStatus}
           onToggle={toggle}
@@ -264,6 +285,7 @@ function BucketList({
   onStatus,
   onOpen,
   onQuickAction,
+  onCompleteOverdue,
   pending,
   selection,
 }: {
@@ -272,6 +294,7 @@ function BucketList({
   now: Date;
   selection?: TaskSelection;
   onQuickAction: (t: TaskWithTags, action: TaskQuickAction) => void;
+  onCompleteOverdue: (items: TaskWithTags[]) => void;
   pending: boolean;
   onStatus: (task: TaskWithTags, status: TaskStatus) => void;
   onToggle: (t: TaskWithTags) => void;
@@ -279,6 +302,7 @@ function BucketList({
 }) {
   const groups = groupTasksByBucket(tasks, now, timeZone);
   const [collapsed, setCollapsed] = useState<Set<TaskBucket>>(new Set(['later', 'someday']));
+  const [confirmingOverdue, setConfirmingOverdue] = useState(false);
 
   if (tasks.length === 0) {
     return (
@@ -296,25 +320,62 @@ function BucketList({
         const isOpen = !collapsed.has(bucket);
         return (
           <section key={bucket} className="rounded-xl border border-border bg-surface">
-            <button
-              type="button"
-              aria-expanded={isOpen}
-              onClick={() => {
-                const next = new Set(collapsed);
-                if (isOpen) next.add(bucket);
-                else next.delete(bucket);
-                setCollapsed(next);
-              }}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left"
-            >
-              {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-              <span className={`font-semibold ${bucket === 'overdue' ? 'text-danger' : ''}`}>
-                {TASK_BUCKET_LABELS[bucket]}
-              </span>
-              <span className="text-sm text-muted">
-                {done}/{items.length}
-              </span>
-            </button>
+            <div className="flex items-center gap-2 pr-3">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => {
+                  const next = new Set(collapsed);
+                  if (isOpen) next.add(bucket);
+                  else next.delete(bucket);
+                  setCollapsed(next);
+                }}
+                className="flex min-w-0 flex-1 items-center gap-2 py-3 pl-4 text-left"
+              >
+                {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                <span className={`font-semibold ${bucket === 'overdue' ? 'text-danger' : ''}`}>
+                  {TASK_BUCKET_LABELS[bucket]}
+                </span>
+                <span className="text-sm text-muted">
+                  {done}/{items.length}
+                </span>
+              </button>
+              {bucket === 'overdue' &&
+                (confirmingOverdue ? (
+                  <span className="flex shrink-0 items-center gap-1 text-sm">
+                    <span className="hidden text-muted sm:inline">
+                      {items.length}개를 각 날짜에 완료할까요?
+                    </span>
+                    <Button
+                      className="!px-2 !py-1"
+                      disabled={pending}
+                      onClick={() => {
+                        setConfirmingOverdue(false);
+                        onCompleteOverdue(items);
+                      }}
+                    >
+                      {items.length}개 완료
+                    </Button>
+                    <Button
+                      className="!px-2 !py-1"
+                      variant="ghost"
+                      onClick={() => setConfirmingOverdue(false)}
+                    >
+                      취소
+                    </Button>
+                  </span>
+                ) : (
+                  <Button
+                    className="!px-2 !py-1"
+                    variant="secondary"
+                    disabled={pending}
+                    title="지난 할 일을 모두 각자의 날짜에 완료한 것으로 처리"
+                    onClick={() => setConfirmingOverdue(true)}
+                  >
+                    <CheckCheck className="size-4" /> 모두 완료처리
+                  </Button>
+                ))}
+            </div>
             {isOpen && (
               <ul className="px-2 pb-2">
                 {items.map((t) => (

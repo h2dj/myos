@@ -3,6 +3,7 @@
 import { localDateToUtc, utcToLocalDate, type RecurrenceRule } from '@myos/core';
 import {
   createRecurringTask,
+  completeOverdueTasks,
   createTask,
   stopSeries,
   deleteTask,
@@ -140,6 +141,14 @@ export async function taskQuickAction(taskId: string, action: TaskQuickAction) {
     },
     PATHS,
     'task.quick',
+  );
+}
+
+export async function completeOverdueTasksAction(taskIds: string[]) {
+  return runAction(
+    async ({ actor, user }) => completeOverdueTasks(db, actor, taskIds, user.timezone),
+    PATHS,
+    'task.completeOverdue',
   );
 }
 
