@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { RelatedItemsPanel } from '@/components/relations/related-items-panel';
 import { TaskDetail } from '@/components/tasks/task-detail';
+import { TaskSequencePanel } from '@/components/tasks/task-sequence-panel';
 import { requireSession } from '@/server/auth/session';
 import { db } from '@/server/db';
 
@@ -41,6 +42,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         activityPlaces={places}
         timeZone={user.timezone}
       />
+      <div className="mt-6 max-w-2xl">
+        <TaskSequencePanel taskId={id} />
+      </div>
       <div className="mt-6">
         <RelatedItemsPanel source={{ type: 'task', id }} />
       </div>

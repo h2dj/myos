@@ -3,7 +3,9 @@
 import { localDateToUtc, utcToLocalDate, type RecurrenceRule } from '@myos/core';
 import {
   createRecurringTask,
+  createSequenceTask,
   createTask,
+  getTaskSequence,
   stopSeries,
   deleteTask,
   restoreTask,
@@ -11,6 +13,7 @@ import {
   updateTask,
   runTaskQuickAction,
   type TaskQuickAction,
+  type TaskSequenceDirection,
   type TaskStatus,
 } from '@myos/domain';
 import { db } from '../db';
@@ -136,5 +139,20 @@ export async function restoreTaskAction(taskId: string) {
     },
     PATHS,
     'task.restore',
+  );
+}
+
+export async function getTaskSequenceAction(taskId: string) {
+  return runAction(async ({ actor }) => getTaskSequence(db, actor, taskId));
+}
+
+export async function createSequenceTaskAction(taskId: string, direction: TaskSequenceDirection) {
+  return runAction(
+    async ({ actor }) => {
+      const task = await createSequenceTask(db, actor, taskId, direction);
+      return { id: task.id, title: task.title };
+    },
+    PATHS,
+    'task.create',
   );
 }

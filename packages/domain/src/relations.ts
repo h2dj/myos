@@ -7,7 +7,7 @@ import {
   type RelationRef,
 } from '@myos/core';
 import { schema } from '@myos/db';
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAccess } from './access';
 import { recordAudit } from './audit';
@@ -59,7 +59,14 @@ export async function getRelatedItems(db: Executor, actor: Actor, raw: unknown) 
   const rows = await db
     .select()
     .from(schema.entityLinks)
-    .where(and(eq(schema.entityLinks.workspaceId, source.workspaceId), touches(source)))
+    .where(
+      and(
+        eq(schema.entityLinks.workspaceId, source.workspaceId),
+        touches(source),
+        // 할 일 선후 관계는 '이전·후속 작업'에서 따로 보여 준다
+        ne(schema.entityLinks.linkType, 'precedes'),
+      ),
+    )
     .orderBy(desc(schema.entityLinks.createdAt), asc(schema.entityLinks.id));
   const refs = rows.map((row) =>
     row.sourceType === source.type && row.sourceId === source.id
@@ -135,7 +142,7 @@ export async function getRelatedItems(db: Executor, actor: Actor, raw: unknown) 
       result.set(key, {
         id: row.id,
         item,
-        kind: row.linkType,
+        kind: row.linkType as RelatedItem['kind'],
         removable: row.linkType === 'related' && can(role, 'write'),
       });
   });

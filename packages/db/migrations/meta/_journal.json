@@ -78,6 +78,13 @@
       "when": 1792934213577,
       "tag": "0010_finance_planning",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794302630469,
+      "tag": "0011_task_sequence",
+      "breakpoints": true
     }
   ]
 }

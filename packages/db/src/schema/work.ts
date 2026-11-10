@@ -213,9 +213,12 @@ export const entityTags = pgTable(
   ],
 );
 
-export const linkType = pgEnum('link_type', ['related', 'derived_from']);
+export const linkType = pgEnum('link_type', ['related', 'derived_from', 'precedes']);
 
-/** 메모-할 일-프로젝트 간 참조 (기획서 §4.1). A05 '메모에서 할 일 생성'은 derived_from */
+/**
+ * 메모-할 일-프로젝트 간 참조 (기획서 §4.1). A05 '메모에서 할 일 생성'은 derived_from.
+ * precedes는 할 일 사이의 선후 관계로, source(이전 작업)가 target(후속 작업)보다 먼저다.
+ */
 export const entityLinks = pgTable(
   'entity_links',
   {
