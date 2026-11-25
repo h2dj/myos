@@ -91,12 +91,27 @@ export function TaskView({
       (!filters.tag || t.tags.some((x) => x.name === filters.tag)),
   );
 
+  // 저장 중인 할 일만 잠근다. 전체를 잠그면 화면 갱신이 끝날 때까지 다른 항목을 체크할 수 없다.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
+  const markBusy = (id: string, on: boolean) =>
+    setBusy((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
   function changeStatus(task: TaskWithTags, status: TaskStatus) {
     setError(undefined);
+    markBusy(task.id, true);
     startTransition(async () => {
       applyOptimistic({ id: task.id, status });
-      const res = await setTaskStatusAction(task.id, status);
-      if (!res.ok) setError(res.error);
+      try {
+        const res = await setTaskStatusAction(task.id, status);
+        if (!res.ok) setError(res.error);
+      } finally {
+        markBusy(task.id, false);
+      }
     });
   }
   const toggle = (task: TaskWithTags) =>
@@ -104,9 +119,14 @@ export function TaskView({
 
   function quickAction(task: TaskWithTags, action: TaskQuickAction) {
     setError(undefined);
+    markBusy(task.id, true);
     startTransition(async () => {
-      const res = await taskQuickAction(task.id, action);
-      if (!res.ok) setError(res.error);
+      try {
+        const res = await taskQuickAction(task.id, action);
+        if (!res.ok) setError(res.error);
+      } finally {
+        markBusy(task.id, false);
+      }
     });
   }
 
@@ -231,6 +251,7 @@ export function TaskView({
           onQuickAction={quickAction}
           onCompleteOverdue={completeOverdue}
           pending={pending}
+          busy={busy}
           onStatus={changeStatus}
           onToggle={toggle}
           onOpen={setEditing}
@@ -291,6 +312,7 @@ function BucketList({
   onQuickAction,
   onCompleteOverdue,
   pending,
+  busy,
   selection,
 }: {
   tasks: TaskWithTags[];
@@ -299,7 +321,10 @@ function BucketList({
   selection?: TaskSelection;
   onQuickAction: (t: TaskWithTags, action: TaskQuickAction) => void;
   onCompleteOverdue: (items: TaskWithTags[]) => void;
+  /** 지난 할 일 일괄 완료처럼 목록 전체에 걸친 작업이 진행 중인지 */
   pending: boolean;
+  /** 저장 중인 할 일 ID */
+  busy: ReadonlySet<string>;
   onStatus: (task: TaskWithTags, status: TaskStatus) => void;
   onToggle: (t: TaskWithTags) => void;
   onOpen: (t: TaskWithTags) => void;
@@ -388,7 +413,7 @@ function BucketList({
                     task={t}
                     timeZone={timeZone}
                     now={now}
-                    pending={pending}
+                    pending={busy.has(t.id)}
                     onQuickAction={onQuickAction}
                     onStatus={onStatus}
                     onToggle={onToggle}

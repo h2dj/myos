@@ -440,25 +440,24 @@ export async function listTasks(
 }
 
 async function attachExtras(db: Executor, rows: Task[]): Promise<TaskWithTags[]> {
-  const tagMap = await tagsFor(
-    db,
-    'task',
-    rows.map((r) => r.id),
-  );
   const projectIds = [...new Set(rows.map((r) => r.projectId).filter((id) => id !== null))];
-  const names = new Map<string, string>();
-  if (projectIds.length) {
-    const ps = await db
-      .select({ id: projects.id, name: projects.name })
-      .from(projects)
-      .where(inArray(projects.id, projectIds));
-    for (const p of ps) names.set(p.id, p.name);
-  }
   const activityIds = [...new Set(rows.flatMap((r) => (r.activityId ? [r.activityId] : [])))];
   const placeIds = [
     ...new Set(rows.flatMap((r) => (r.activityPlaceId ? [r.activityPlaceId] : []))),
   ];
-  const [activityRows, placeRows] = await Promise.all([
+  // 서로의 결과를 쓰지 않는 조회라 함께 보낸다 (풀 연결이면 대기 시간이 겹친다)
+  const [tagMap, projectRows, activityRows, placeRows] = await Promise.all([
+    tagsFor(
+      db,
+      'task',
+      rows.map((r) => r.id),
+    ),
+    projectIds.length
+      ? db
+          .select({ id: projects.id, name: projects.name })
+          .from(projects)
+          .where(inArray(projects.id, projectIds))
+      : [],
     activityIds.length
       ? db
           .select({ id: schema.activities.id, name: schema.activities.name })
@@ -479,6 +478,7 @@ async function attachExtras(db: Executor, rows: Task[]): Promise<TaskWithTags[]>
           )
       : [],
   ]);
+  const names = new Map(projectRows.map((p) => [p.id, p.name]));
   const activityNames = new Map(activityRows.map((r) => [r.id, r.name]));
   const placeNames = new Map(placeRows.map((r) => [r.id, r.name]));
   return rows.map((r) => ({
