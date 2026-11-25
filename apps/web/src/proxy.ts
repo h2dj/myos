@@ -32,8 +32,10 @@ export async function proxy(request: NextRequest) {
         },
       },
     });
-    const { data } = await supabase.auth.getUser();
-    signedIn = Boolean(data.user);
+    // getClaims()는 비대칭 서명 키(ECC/RSA)면 JWKS로 로컬 검증해 Auth 서버 왕복을 없앤다.
+    // 대칭 키(HS256) 프로젝트에서는 내부적으로 getUser()와 같은 서버 검증을 한다.
+    const { data } = await supabase.auth.getClaims();
+    signedIn = Boolean(data?.claims.sub);
   }
 
   if (!signedIn && !isPublic) {

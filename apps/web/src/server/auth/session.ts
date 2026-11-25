@@ -1,5 +1,11 @@
 import 'server-only';
-import { ensureUserProfile, getProfile, listWorkspaces, type Actor } from '@myos/domain';
+import {
+  ensureUserProfile,
+  getProfile,
+  listWorkspaces,
+  NotFoundError,
+  type Actor,
+} from '@myos/domain';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
@@ -22,13 +28,15 @@ export const getIdentity = cache(async (): Promise<AuthIdentity | null> => {
     return email ? { id: devUserId(email), email } : null;
   }
   const supabase = await createSupabaseServerClient();
-  // getUser()는 Auth 서버에 토큰을 검증하므로 쿠키 위조에 안전하다
-  const { data } = await supabase.auth.getUser();
-  if (!data.user?.email) return null;
-  const name = data.user.user_metadata?.name;
+  // getClaims()는 토큰 서명을 검증하므로 쿠키 위조에 안전하다. 비대칭 서명 키면 JWKS(캐시)로
+  // 로컬 검증해 요청마다 Auth 서버를 왕복하지 않고, 대칭 키면 getUser()처럼 서버에서 검증한다.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub || typeof claims.email !== 'string' || !claims.email) return null;
+  const name = (claims.user_metadata as Record<string, unknown> | undefined)?.name;
   return {
-    id: data.user.id,
-    email: data.user.email,
+    id: claims.sub,
+    email: claims.email,
     name: typeof name === 'string' ? name : undefined,
   };
 });
@@ -44,12 +52,22 @@ export const requireSession = cache(async () => {
   if (!identity) redirect('/login');
 
   const actor: Actor = { userId: identity.id };
-  let workspaces = await measure('session', 'workspaces', () => listWorkspaces(db, actor));
-  if (workspaces.length === 0) {
+  // 공간 목록과 프로필은 서로 독립이라 함께 읽는다 (DB 왕복 1회 절약).
+  // 첫 로그인이라 프로필이 없으면 만든 뒤 다시 읽는다.
+  const load = () =>
+    Promise.all([
+      measure('session', 'workspaces', () => listWorkspaces(db, actor)),
+      measure('session', 'profile', () => getProfile(db, actor)).catch((err: unknown) => {
+        if (err instanceof NotFoundError) return null;
+        throw err;
+      }),
+    ]);
+  let [workspaces, profile] = await load();
+  if (workspaces.length === 0 || !profile) {
     await ensureUserProfile(db, identity);
-    workspaces = await measure('session', 'workspaces', () => listWorkspaces(db, actor));
+    [workspaces, profile] = await load();
   }
-  const user = await measure('session', 'profile', () => getProfile(db, actor));
+  const user = profile ?? (await getProfile(db, actor));
 
   const selected = (await cookies()).get(WORKSPACE_COOKIE)?.value;
   const workspace = workspaces.find((w) => w.id === selected) ?? workspaces[0]!;
